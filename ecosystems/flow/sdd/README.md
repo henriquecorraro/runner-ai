@@ -14,3 +14,10 @@ The repositories remain the source of code and repo-local documentation. The eco
 No tasks registered yet.
 
 Create tasks under `sdd/tasks/` only when work for this ecosystem is intentionally queued.
+
+Recommended lifecycle:
+
+- `open`
+- `implemented`
+- `needs-rework`
+- `done`

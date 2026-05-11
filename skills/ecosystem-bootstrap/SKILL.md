@@ -57,6 +57,8 @@ validation:
 ---
 ```
 
+Use `open` as the default status for new tasks.
+
 ## Design Rules
 
 - Keep all tasks for the ecosystem in one place: `ecosystems/<name>/sdd/tasks/`.

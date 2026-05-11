@@ -4,6 +4,8 @@ Generic runner for executing centralized ecosystem tasks across one or more loca
 
 The runner is not tied to a single product. Each ecosystem lives under `ecosystems/<name>/` and owns its own config, centralized SDD, local skills, and execution history.
 
+For a full end-to-end usage guide, see [HOWTOUSE.md](/home/rick/projetos/ecosystem-ai-runner/HOWTOUSE.md).
+
 ## Structure
 
 ```text

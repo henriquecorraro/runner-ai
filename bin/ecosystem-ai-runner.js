@@ -5,6 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const DEFAULT_CONFIG_FILE = 'ecosystem.config.json';
+const ACTIONABLE_TASK_STATUSES = new Set(['open', 'needs-rework']);
+const VALID_TASK_STATUSES = new Set(['open', 'implemented', 'needs-rework', 'done']);
 
 function printHelp() {
   console.log(`Ecosystem AI Runner
@@ -20,8 +22,8 @@ Options:
   --task <value>         Uses one central ecosystem task by id, filename, or relative path. Repeatable.
   --feature <value>      Resolves one central task by filename fragment.
   --scope <scope-id>     Executes every task in one scope within a shared codex exec session.
-  --open-tasks           Executes every task with status "open" in one shared codex exec session.
-  --open-scopes          Groups tasks with status "open" by scope and runs one shared codex exec per scope.
+  --open-tasks           Executes every actionable task ("open" and "needs-rework") in one shared codex exec session.
+  --open-scopes          Groups actionable tasks by scope and runs one shared codex exec per scope.
   --config <path>        Uses a custom ecosystem config file. Default: ${DEFAULT_CONFIG_FILE}
   --run-id <value>       Uses a custom output run id. Default: timestamp.
   --dry-run              Resolves config and tasks without invoking codex.
@@ -283,6 +285,13 @@ function parseTaskFile(taskFilePath, repositoriesById) {
   const status = String(metadata.status || 'open').toLowerCase();
   const repositoryIds = ensureArray(metadata.repositories, `task ${id}.repositories`);
 
+  if (!VALID_TASK_STATUSES.has(status)) {
+    throw new Error(
+      `Task "${id}" has unsupported status "${status}". ` +
+        `Use one of: ${[...VALID_TASK_STATUSES].join(', ')}.`,
+    );
+  }
+
   if (repositoryIds.length === 0) {
     throw new Error(`Task "${id}" must define at least one repository in frontmatter.`);
   }
@@ -500,7 +509,9 @@ function buildSharedPrompt({ ecosystemName, batch, repositoriesById, outputFile 
     '- Execute every task listed below in the same Codex session.',
     '- Use the task repository ownership to decide where to edit code.',
     '- Keep cross-repository contract changes aligned across all affected repositories.',
-    '- Update any human-facing docs implied by the tasks and repository hints.',
+    '- Keep execution summaries short and operational to control token cost.',
+    '- Update repo docs only when the implementation is stable enough to describe the real module behavior.',
+    '- If the result is partial or needs another pass, record gaps and rework instead of writing large final docs.',
     '- Do not revert unrelated user changes.',
     '- Run the narrowest useful validation in each touched repository.',
     '',
@@ -522,6 +533,9 @@ function buildSharedPrompt({ ecosystemName, batch, repositoriesById, outputFile 
     '- Tasks:',
     '- Result:',
     '- Validation:',
+    '- Docs Updated:',
+    '- Gaps:',
+    '- Needs Rework:',
     '- Notes:',
     '',
     'The output file must stay short and operational. After writing it, read it back before ending your response.',
@@ -661,6 +675,9 @@ function createFallbackOutput({ batch, outputFile, logFile, reason }) {
     `- Tasks: ${batch.tasks.map((task) => task.id).join(', ')}`,
     '- Result: Runner generated this fallback because the batch did not produce a valid mandatory output file.',
     '- Validation: not determined',
+    '- Docs Updated: none',
+    '- Gaps: output file was not produced correctly',
+    '- Needs Rework: yes',
     `- Notes: ${reason}; expected output file: ${outputFile}; inspect stage log: ${logFile}`,
   ].join('\n') + '\n';
 }
@@ -753,10 +770,10 @@ function resolveBatches(options, taskIndex) {
   }
 
   if (options.openScopes) {
-    const openTasks = taskIndex.list.filter((task) => task.status === 'open');
+    const openTasks = taskIndex.list.filter((task) => ACTIONABLE_TASK_STATUSES.has(task.status));
 
     if (openTasks.length === 0) {
-      throw new Error('No open tasks were found in the central ecosystem SDD.');
+      throw new Error('No actionable tasks were found in the central ecosystem SDD.');
     }
 
     const batchesByScope = new Map();
@@ -781,10 +798,10 @@ function resolveBatches(options, taskIndex) {
   }
 
   if (options.openTasks) {
-    const openTasks = taskIndex.list.filter((task) => task.status === 'open');
+    const openTasks = taskIndex.list.filter((task) => ACTIONABLE_TASK_STATUSES.has(task.status));
 
     if (openTasks.length === 0) {
-      throw new Error('No open tasks were found in the central ecosystem SDD.');
+      throw new Error('No actionable tasks were found in the central ecosystem SDD.');
     }
 
     return [

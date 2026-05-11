@@ -65,6 +65,13 @@ depends_on:
 
 The body should describe the implementation goal, constraints, docs alignment, and validation expectations.
 
+Supported task statuses:
+
+- `open`: ready to start
+- `implemented`: code was delivered, but the result is not yet considered final enough to consolidate as done
+- `needs-rework`: a previous attempt did not fully meet expectations and should be executed again
+- `done`: code, docs, and validation are aligned
+
 ## Commands
 
 Run one task by id, filename, or relative path:
@@ -85,13 +92,13 @@ Run one scope:
 npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --scope broadcast-interaction-unique-key
 ```
 
-Run all tasks marked `status: open` in one shared execution:
+Run all actionable tasks in one shared execution:
 
 ```bash
 npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --open-tasks
 ```
 
-Run all open tasks grouped by scope:
+Run all actionable tasks grouped by scope:
 
 ```bash
 npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --open-scopes
@@ -110,8 +117,8 @@ The runner builds one shared `codex exec` batch per selection:
 - `--task`: one shared batch with the selected tasks
 - `--feature`: one shared batch with the matched task
 - `--scope`: one shared batch with every task in that scope
-- `--open-tasks`: one shared batch with every open task
-- `--open-scopes`: one shared batch per open scope
+- `--open-tasks`: one shared batch with every actionable task (`open` and `needs-rework`)
+- `--open-scopes`: one shared batch per scope that still has actionable tasks
 
 The runner grants write access to:
 
@@ -136,6 +143,22 @@ Each batch folder contains:
 - `tasks/`
 
 The `tasks/` folder stores snapshots of the central task files used for that batch.
+
+## Lean Documentation Model
+
+To control token usage, the runner expects a short operational output on every execution and treats repo documentation as a later consolidation step.
+
+Recommended flow:
+
+- `open`: task is ready to execute
+- `implemented`: code exists, but the result still needs validation or review
+- `needs-rework`: the previous attempt did not fully meet expectations
+- `done`: docs and implementation are stable enough to be treated as the current module behavior
+
+Use repo doc updates conservatively:
+
+- partial or uncertain result: keep docs small and note the gaps
+- stable result: update the real module docs and move the task to `done`
 
 ## Bootstrap Skill
 

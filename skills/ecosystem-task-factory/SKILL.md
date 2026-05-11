@@ -29,6 +29,17 @@ Create ecosystem-level tasks under `ecosystems/<name>/sdd/tasks/` and keep the e
 7. Add or update `Task Status` in the ecosystem `sdd/README.md`.
 8. Default new tasks to `status: open`.
 
+## Status Model
+
+Use these statuses:
+
+- `open`: ready to start
+- `implemented`: code was delivered but should not yet be treated as fully consolidated
+- `needs-rework`: the previous attempt missed expectations or needs another pass
+- `done`: code, docs, and validation are aligned
+
+Default new tasks to `open`.
+
 ## When To Split
 
 Prefer multiple tasks when:
@@ -81,4 +92,5 @@ The task body should describe:
 - Prefer one task per implementation responsibility.
 - Reuse an existing scope when the new task belongs to the same cross-repo change.
 - If a task is open and already covers the request, update it instead of creating a duplicate.
+- Prefer moving a task to `implemented` or `needs-rework` before `done` when the result is still being validated.
 - Do not create extra process documents beyond task files and the ecosystem `sdd/README.md`.

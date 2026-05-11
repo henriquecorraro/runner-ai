@@ -15,4 +15,9 @@ The repositories remain the source of code and repo-local documentation. The eco
 - [ ] Task 01: Broadcast Interaction Unique Key Backend Validation
 - [ ] Task 02: Broadcast Interaction Unique Key Frontend Picker
 
-Mark a task complete only after code, required docs, and validation are aligned in every affected repository.
+Recommended lifecycle:
+
+- `open`: ready to start
+- `implemented`: code exists, but docs or expectation checks are not fully consolidated
+- `needs-rework`: a previous attempt needs another pass
+- `done`: code, required docs, and validation are aligned in every affected repository
