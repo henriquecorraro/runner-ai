@@ -10,7 +10,7 @@ node_modules/
 
 # Local Codex/runtime artifacts
 .codex/
-ecosystems/*/runs/
+ecosystems/
 
 # OS/editor
 .DS_Store
