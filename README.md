@@ -1,10 +1,10 @@
 # Ecosystem AI Runner
 
-Generic runner for executing centralized ecosystem tasks across one or more local repositories with shared `codex exec` sessions.
+Generic runner for executing centralized ecosystem tasks across one or more local repositories with shared agent sessions.
 
 The runner is not tied to a single product. Each ecosystem lives under `ecosystems/<name>/` and owns its own config, centralized SDD, local skills, and execution history.
 
-For a full end-to-end usage guide, see [HOWTOUSE.md](/home/rick/projetos/ecosystem-ai-runner/HOWTOUSE.md).
+For a full end-to-end usage guide, see [HOWTOUSE.md](HOWTOUSE.md).
 
 ## Structure
 
@@ -55,6 +55,12 @@ Run all open tasks grouped by scope:
 npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --open-scopes
 ```
 
+Choose an agent explicitly:
+
+```bash
+npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --task audios-upload-and-voice-routes --agent claude-code
+```
+
 ## Installing Skills In Codex
 
 Codex discovers local skills from:
@@ -68,20 +74,23 @@ The cleanest way to use the skills from this project is to create symlinks from 
 Example:
 
 ```bash
-ln -s /home/rick/projetos/ecosystem-ai-runner/skills/codex-direct-mode \
-  /home/rick/.codex/skills/codex-direct-mode
+ln -s "$PWD/skills/codex-direct-mode" \
+  "$HOME/.codex/skills/codex-direct-mode"
 
-ln -s /home/rick/projetos/ecosystem-ai-runner/skills/ecosystem-bootstrap \
-  /home/rick/.codex/skills/ecosystem-bootstrap
+ln -s "$PWD/skills/ecosystem-bootstrap" \
+  "$HOME/.codex/skills/ecosystem-bootstrap"
 
-ln -s /home/rick/projetos/ecosystem-ai-runner/skills/ecosystem-task-factory \
-  /home/rick/.codex/skills/ecosystem-task-factory
+ln -s "$PWD/skills/ecosystem-task-factory" \
+  "$HOME/.codex/skills/ecosystem-task-factory"
 
-ln -s /home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead/skills/liguelead-direct-sdd \
-  /home/rick/.codex/skills/liguelead-direct-sdd
+ln -s "$PWD/skills/ecosystem-task-closer" \
+  "$HOME/.codex/skills/ecosystem-task-closer"
 
-ln -s /home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead/skills/liguelead-platform-ecosystem \
-  /home/rick/.codex/skills/liguelead-platform-ecosystem
+ln -s "$PWD/ecosystems/liguelead/skills/liguelead-direct-sdd" \
+  "$HOME/.codex/skills/liguelead-direct-sdd"
+
+ln -s "$PWD/ecosystems/liguelead/skills/liguelead-platform-ecosystem" \
+  "$HOME/.codex/skills/liguelead-platform-ecosystem"
 ```
 
 Why use symlinks:
@@ -93,8 +102,8 @@ Why use symlinks:
 To verify:
 
 ```bash
-ls -l /home/rick/.codex/skills
-readlink /home/rick/.codex/skills/codex-direct-mode
+ls -l "$HOME/.codex/skills"
+readlink "$HOME/.codex/skills/codex-direct-mode"
 ```
 
 ## Using Skills
@@ -104,19 +113,26 @@ After the links exist, use the skill by naming it in the prompt.
 Examples:
 
 ```text
-[$liguelead-direct-sdd](/home/rick/.codex/skills/liguelead-direct-sdd/SKILL.md)
+Use the `liguelead-direct-sdd` skill.
 ```
 
 ```text
-[$ecosystem-bootstrap](/home/rick/.codex/skills/ecosystem-bootstrap/SKILL.md)
+Use the `ecosystem-bootstrap` skill.
 Crie um novo ecossistema chamado flow com os repositórios /caminho/repo-a e /caminho/repo-b
+Não crie tasks ainda
+Avalie a qualidade das docs humanas dos repositórios e me mostre se há gaps
 ```
 
 ```text
-[$ecosystem-task-factory](/home/rick/.codex/skills/ecosystem-task-factory/SKILL.md)
+Use the `ecosystem-task-factory` skill.
 Crie tasks para o scope onboarding no ecossistema flow
+```
+
+```text
+Use the `ecosystem-task-closer` skill.
+A task onboarding-backend do ecossistema flow foi validada. Marque como done e atualize a doc humana no repositório dono.
 ```
 
 If the new skill does not appear immediately in the UI, open a new thread or restart the Codex session.
 
-See [docs/usage.md](/home/rick/projetos/ecosystem-ai-runner/docs/usage.md) for the full contract.
+See [docs/usage.md](docs/usage.md) for the full contract.

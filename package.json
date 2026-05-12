@@ -2,7 +2,7 @@
   "name": "ecosystem-ai-runner",
   "version": "0.1.0",
   "private": true,
-  "description": "Internal runner for isolated Codex execution across multi-repository ecosystems.",
+  "description": "Runner for isolated agent execution across multi-repository ecosystems.",
   "type": "commonjs",
   "bin": {
     "ecosystem-ai-runner": "bin/ecosystem-ai-runner.js"

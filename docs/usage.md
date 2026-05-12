@@ -4,6 +4,8 @@ The runner executes centralized ecosystem tasks stored inside this project.
 
 It no longer depends on `docs/sdd` inside the target repositories.
 
+Human-facing repository docs stay in the repositories that own them. This runner stores only the ecosystem config, central tasks, run history, and docs-quality baselines.
+
 ## Ecosystem Layout
 
 Each ecosystem should look like this:
@@ -20,16 +22,43 @@ ecosystems/<name>/
 
 ## Ecosystem Config
 
-Example: [ecosystems/liguelead/ecosystem.config.json](/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead/ecosystem.config.json)
+Example: [ecosystems/liguelead/ecosystem.config.json](../ecosystems/liguelead/ecosystem.config.json)
 
 Important fields:
 
 - `name`: ecosystem name
 - `historyRoot`: where runs are stored relative to the ecosystem folder
 - `sddRoot`: where the centralized SDD lives relative to the ecosystem folder
-- `codex.command`: CLI command, usually `codex`
-- `codex.args`: base arguments, usually `["exec", "--ephemeral"]`
+- `defaultAgent`: default agent key. If omitted, the runner uses `codex`
+- `agents`: named agent configurations
 - `repositories`: local repositories that belong to the ecosystem
+
+Supported agent adapter types:
+
+- `codex`: runs Codex CLI with `--add-dir`, `-C`, and prompt via stdin
+- `claude-code`: runs Claude Code CLI with `-p`, `--add-dir`, and a pointer to the generated prompt file
+
+Example:
+
+```json
+{
+  "defaultAgent": "codex",
+  "agents": {
+    "codex": {
+      "type": "codex",
+      "command": "codex",
+      "args": ["exec", "--ephemeral"]
+    },
+    "claude-code": {
+      "type": "claude-code",
+      "command": "claude",
+      "args": ["-p"]
+    }
+  }
+}
+```
+
+Legacy `codex.command` and `codex.args` configs are still supported for Codex.
 
 Each repository can define:
 
@@ -57,13 +86,15 @@ validation:
   - npm run typecheck
   - npm test
 docs_targets:
-  - docs/human/modules/broadcast-legacy-flow.md
+  - backend:docs/human/modules/broadcast-legacy-flow.md
 depends_on:
   - another-task-id
 ---
 ```
 
 The body should describe the implementation goal, constraints, docs alignment, and validation expectations.
+
+Use `docs_targets` for repository-local docs, in the format `repo-id:path/inside/repo.md`.
 
 Supported task statuses:
 
@@ -78,6 +109,12 @@ Run one task by id, filename, or relative path:
 
 ```bash
 npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --task broadcast-interaction-unique-key-backend
+```
+
+Run with a non-default agent:
+
+```bash
+npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --task broadcast-interaction-unique-key-backend --agent claude-code
 ```
 
 Resolve one task by fragment:
@@ -112,7 +149,7 @@ npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --open-scop
 
 ## Execution Model
 
-The runner builds one shared `codex exec` batch per selection:
+The runner builds one shared agent batch per selection:
 
 - `--task`: one shared batch with the selected tasks
 - `--feature`: one shared batch with the matched task
@@ -137,7 +174,7 @@ Each batch folder contains:
 
 - `prompt.md`
 - `output.md`
-- `codex.log`
+- `<agent>.log`
 - `metadata.json`
 - `summary.json`
 - `tasks/`
@@ -162,8 +199,20 @@ Use repo doc updates conservatively:
 
 ## Bootstrap Skill
 
-Use [skills/ecosystem-bootstrap/SKILL.md](/home/rick/projetos/ecosystem-ai-runner/skills/ecosystem-bootstrap/SKILL.md) when you want to create a new ecosystem from one or more local repositories.
+Use [skills/ecosystem-bootstrap/SKILL.md](../skills/ecosystem-bootstrap/SKILL.md) when you want to create a new ecosystem environment from one or more local repositories without generating tasks yet.
+
+During bootstrap, the skill may also assess the repositories' human-facing documentation against [docs/human-doc-quality-rubric.md](human-doc-quality-rubric.md) and register a baseline in the ecosystem `sdd/README.md`.
+
+If the docs are below baseline, the skill should suggest a follow-up option to create an initial docs task instead of creating it automatically.
+
+When that follow-up task runs, generated human docs should be written in the affected repository, not in this runner.
 
 ## Task Factory Skill
 
-Use [skills/ecosystem-task-factory/SKILL.md](/home/rick/projetos/ecosystem-ai-runner/skills/ecosystem-task-factory/SKILL.md) when you want to create or split centralized ecosystem tasks.
+Use [skills/ecosystem-task-factory/SKILL.md](../skills/ecosystem-task-factory/SKILL.md) when you want to create or split centralized ecosystem tasks.
+
+## Task Closer Skill
+
+Use [skills/ecosystem-task-closer/SKILL.md](../skills/ecosystem-task-closer/SKILL.md) after the user confirms a task is correct and ready to close.
+
+The closer updates final human docs in the owning repository, changes the task frontmatter to `status: done`, and updates the ecosystem `sdd/README.md` Task Status.

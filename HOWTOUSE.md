@@ -1,6 +1,6 @@
 # How To Use
 
-This guide explains how to use the centralized ecosystem workflow in this repository with any model or Codex-compatible agent.
+This guide explains how to use the centralized ecosystem workflow in this repository with any compatible agent.
 
 The goal is to let you:
 
@@ -41,6 +41,8 @@ ecosystems/<name>/sdd/README.md
 ecosystems/<name>/sdd/tasks/
 ```
 
+Human-facing product, module, architecture, and business-rule docs stay in the repositories that own them. This runner stores tasks that ask for those docs to be created or updated.
+
 ### Task
 
 A task is an executable unit of work stored in:
@@ -59,6 +61,8 @@ Each task declares:
 - `validation`
 - optional `docs_targets`
 - optional `depends_on`
+
+Use `docs_targets` for repository-local docs, in the format `repo-id:path/inside/repo.md`.
 
 ### Scope
 
@@ -92,6 +96,7 @@ This project provides these generic skills:
 
 - `ecosystem-bootstrap`
 - `ecosystem-task-factory`
+- `ecosystem-task-closer`
 - `codex-direct-mode`
 
 Some ecosystems may also provide ecosystem-specific skills under:
@@ -113,14 +118,17 @@ The recommended setup is to symlink the skill folders from this project into `~/
 Example:
 
 ```bash
-ln -s /home/rick/projetos/ecosystem-ai-runner/skills/ecosystem-bootstrap \
-  /home/rick/.codex/skills/ecosystem-bootstrap
+ln -s "$PWD/skills/ecosystem-bootstrap" \
+  "$HOME/.codex/skills/ecosystem-bootstrap"
 
-ln -s /home/rick/projetos/ecosystem-ai-runner/skills/ecosystem-task-factory \
-  /home/rick/.codex/skills/ecosystem-task-factory
+ln -s "$PWD/skills/ecosystem-task-factory" \
+  "$HOME/.codex/skills/ecosystem-task-factory"
 
-ln -s /home/rick/projetos/ecosystem-ai-runner/skills/codex-direct-mode \
-  /home/rick/.codex/skills/codex-direct-mode
+ln -s "$PWD/skills/ecosystem-task-closer" \
+  "$HOME/.codex/skills/ecosystem-task-closer"
+
+ln -s "$PWD/skills/codex-direct-mode" \
+  "$HOME/.codex/skills/codex-direct-mode"
 ```
 
 If an ecosystem has its own skills, link those too.
@@ -128,20 +136,21 @@ If an ecosystem has its own skills, link those too.
 Example:
 
 ```bash
-ln -s /home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead/skills/liguelead-direct-sdd \
-  /home/rick/.codex/skills/liguelead-direct-sdd
+ln -s "$PWD/ecosystems/liguelead/skills/liguelead-direct-sdd" \
+  "$HOME/.codex/skills/liguelead-direct-sdd"
 ```
 
 ## Step 1: Create A New Ecosystem
 
-Use the bootstrap skill to inspect repositories and create the initial ecosystem structure.
+Use the bootstrap skill to inspect repositories and create the initial ecosystem structure only.
 
 Prompt example:
 
 ```text
-[$ecosystem-bootstrap](/home/rick/.codex/skills/ecosystem-bootstrap/SKILL.md)
-Create a new ecosystem called billing-platform using the repositories /home/rick/projetos/api-billing and /home/rick/projetos/front-billing.
+Use the `ecosystem-bootstrap` skill.
+Create a new ecosystem called billing-platform using the repositories /path/to/api-billing and /path/to/front-billing.
 Read the READMEs, identify validation commands, and generate the centralized ecosystem structure in the runner.
+Do not create tasks yet.
 ```
 
 Expected result:
@@ -156,14 +165,17 @@ ecosystems/billing-platform/
   runs/
 ```
 
+The bootstrap can also score the selected repositories' human docs against a shared quality rubric and record the baseline in `sdd/README.md`.
+If the docs are weak, it should suggest creating a docs-focused task as a next step, but it should not create that task automatically. When that task runs, generated docs should be written in the affected repositories.
+
 ## Step 2: Brainstorm And Create Tasks
 
-Use the task factory skill to convert repository analysis into centralized tasks.
+Use the task factory skill to convert repository analysis into centralized tasks after the ecosystem environment already exists.
 
 Prompt example:
 
 ```text
-[$ecosystem-task-factory](/home/rick/.codex/skills/ecosystem-task-factory/SKILL.md)
+Use the `ecosystem-task-factory` skill.
 For the billing-platform ecosystem, analyze the invoice flow and create the initial tasks.
 Group related backend and frontend work under the scope `invoice-crud`.
 Split tasks when backend and frontend have separate responsibilities.
@@ -180,7 +192,7 @@ ecosystems/billing-platform/sdd/tasks/
 If you want a more explicit planning phase first:
 
 ```text
-[$ecosystem-task-factory](/home/rick/.codex/skills/ecosystem-task-factory/SKILL.md)
+Use the `ecosystem-task-factory` skill.
 For the crm-core ecosystem, do a short brainstorm of the opportunity creation flow across the repositories, identify the boundaries, propose scopes, and then create the initial centralized tasks.
 ```
 
@@ -207,7 +219,7 @@ validation:
   - npm run typecheck
   - npm test
 docs_targets:
-  - docs/human/modules/invoices.md
+  - backend:docs/human/modules/invoices.md
 ---
 ```
 
@@ -218,7 +230,7 @@ The runner accepts five main execution modes.
 ### Run One Task
 
 ```bash
-cd /home/rick/projetos/ecosystem-ai-runner
+cd /path/to/ecosystem-ai-runner
 npm run tasks -- --config ecosystems/billing-platform/ecosystem.config.json --task invoice-crud-backend
 ```
 
@@ -304,10 +316,13 @@ Only move a task to `done` when:
 ### Example Prompt For Final Consolidation
 
 ```text
+Use the `ecosystem-task-closer` skill.
 The task `invoice-crud-frontend` in ecosystem billing-platform now meets expectations.
 Mark it as `done`, update the stable module documentation in the affected repository, and record in the runner output which docs were updated.
 Keep the execution summary short.
 ```
+
+The closer skill is responsible for writing final human docs in the owning repository, updating the task frontmatter to `status: done`, and marking the task as complete in the ecosystem `sdd/README.md`.
 
 ## Lean Documentation Model
 
@@ -364,7 +379,7 @@ Each batch folder contains:
 
 - `prompt.md`
 - `output.md`
-- `codex.log`
+- `<agent>.log`
 - `metadata.json`
 - `summary.json`
 - `tasks/`
@@ -376,14 +391,14 @@ The `tasks/` folder stores snapshots of the task files used for that batch.
 ### 1. Create Ecosystem
 
 ```text
-[$ecosystem-bootstrap](/home/rick/.codex/skills/ecosystem-bootstrap/SKILL.md)
-Create a new ecosystem called crm-core using /home/rick/projetos/crm-api and /home/rick/projetos/crm-front.
+Use the `ecosystem-bootstrap` skill.
+Create a new ecosystem called crm-core using /path/to/crm-api and /path/to/crm-front.
 ```
 
 ### 2. Brainstorm And Create Tasks
 
 ```text
-[$ecosystem-task-factory](/home/rick/.codex/skills/ecosystem-task-factory/SKILL.md)
+Use the `ecosystem-task-factory` skill.
 For crm-core, analyze the opportunity creation flow, propose scopes, and create the centralized tasks.
 Group related work under `opportunity-create`.
 ```
@@ -423,6 +438,7 @@ This setup is model-agnostic.
 You can use it with:
 
 - Codex
+- Claude Code
 - ChatGPT agents
 - any compatible local or remote model that can follow the task files and write the required output
 

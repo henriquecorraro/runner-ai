@@ -21,12 +21,13 @@ Usage:
 Options:
   --task <value>         Uses one central ecosystem task by id, filename, or relative path. Repeatable.
   --feature <value>      Resolves one central task by filename fragment.
-  --scope <scope-id>     Executes every task in one scope within a shared codex exec session.
-  --open-tasks           Executes every actionable task ("open" and "needs-rework") in one shared codex exec session.
-  --open-scopes          Groups actionable tasks by scope and runs one shared codex exec per scope.
+  --scope <scope-id>     Executes every task in one scope within a shared agent session.
+  --open-tasks           Executes every actionable task ("open" and "needs-rework") in one shared agent session.
+  --open-scopes          Groups actionable tasks by scope and runs one shared agent session per scope.
   --config <path>        Uses a custom ecosystem config file. Default: ${DEFAULT_CONFIG_FILE}
+  --agent <name>         Uses an agent from config.agents. Default: config.defaultAgent or codex.
   --run-id <value>       Uses a custom output run id. Default: timestamp.
-  --dry-run              Resolves config and tasks without invoking codex.
+  --dry-run              Resolves config and tasks without invoking an agent.
   --help                 Shows this message.
 `);
 }
@@ -75,6 +76,12 @@ function parseArgs(argv) {
 
     if (arg === '--config') {
       options.config = readValue(argv, index, arg);
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--agent') {
+      options.agent = readValue(argv, index, arg);
       index += 1;
       continue;
     }
@@ -415,15 +422,16 @@ function groupTasksByRepository(tasks, repositoriesById) {
   return grouped;
 }
 
-function createStageHistory({ historyRoot, runId, batchIndex, batchId }) {
+function createStageHistory({ historyRoot, runId, batchIndex, batchId, agentName }) {
   const stageName = `${String(batchIndex + 1).padStart(2, '0')}-${slugify(batchId)}`;
   const stageDir = path.join(historyRoot, runId, stageName);
+  const logName = `${slugify(agentName || 'agent') || 'agent'}.log`;
 
   return {
     stageDir,
     promptFile: path.join(stageDir, 'prompt.md'),
     outputFile: path.join(stageDir, 'output.md'),
-    logFile: path.join(stageDir, 'codex.log'),
+    logFile: path.join(stageDir, logName),
     metadataFile: path.join(stageDir, 'metadata.json'),
     summaryFile: path.join(stageDir, 'summary.json'),
     tasksDir: path.join(stageDir, 'tasks'),
@@ -506,7 +514,7 @@ function buildSharedPrompt({ ecosystemName, batch, repositoriesById, outputFile 
     `Batch label: ${batch.label}`,
     '',
     'Execution goals:',
-    '- Execute every task listed below in the same Codex session.',
+    '- Execute every task listed below in the same agent session.',
     '- Use the task repository ownership to decide where to edit code.',
     '- Keep cross-repository contract changes aligned across all affected repositories.',
     '- Keep execution summaries short and operational to control token cost.',
@@ -542,19 +550,102 @@ function buildSharedPrompt({ ecosystemName, batch, repositoriesById, outputFile 
   ].join('\n');
 }
 
-function runCodex({ command, baseArgs, prompt, stageHistory, cwd, writableRoots }) {
-  const args = [...baseArgs];
+const AGENT_ADAPTERS = new Set(['codex', 'claude-code']);
 
-  for (const writableRoot of [stageHistory.stageDir, ...writableRoots]) {
-    args.push('--add-dir', writableRoot);
+function resolveAgentConfig(config, selectedAgentName = null) {
+  const legacyCodexConfig = config.codex || {};
+  const defaultAgents = {
+    codex: {
+      type: 'codex',
+      command: legacyCodexConfig.command || 'codex',
+      args:
+        Array.isArray(legacyCodexConfig.args) && legacyCodexConfig.args.length > 0
+          ? legacyCodexConfig.args
+          : ['exec', '--ephemeral'],
+    },
+    'claude-code': {
+      type: 'claude-code',
+      command: 'claude',
+      args: ['-p'],
+    },
+  };
+
+  const configuredAgents = config.agents && typeof config.agents === 'object' ? config.agents : {};
+  const agents = {
+    ...defaultAgents,
+    ...configuredAgents,
+  };
+  const name = selectedAgentName || config.defaultAgent || 'codex';
+  const agent = agents[name];
+
+  if (!agent) {
+    throw new Error(`Agent "${name}" was not found in config.agents.`);
   }
 
-  args.push('-C', cwd, '-');
+  const type = agent.type || name;
+
+  if (!AGENT_ADAPTERS.has(type)) {
+    throw new Error(`Agent "${name}" uses unsupported adapter type "${type}". Supported: ${[...AGENT_ADAPTERS].join(', ')}.`);
+  }
+
+  return {
+    name,
+    type,
+    command: agent.command || defaultAgents[type].command,
+    args:
+      Array.isArray(agent.args) && agent.args.length > 0
+        ? agent.args
+        : defaultAgents[type].args,
+  };
+}
+
+function hasArg(args, ...names) {
+  return args.some((arg) => names.includes(arg));
+}
+
+function buildAgentInvocation({ agent, stageHistory, cwd, writableRoots }) {
+  const args = [...agent.args];
+
+  for (const writableRoot of [stageHistory.stageDir, ...writableRoots]) {
+    if (agent.type === 'codex' || agent.type === 'claude-code') {
+      args.push('--add-dir', writableRoot);
+    }
+  }
+
+  if (agent.type === 'codex') {
+    args.push('-C', cwd, '-');
+  }
+
+  if (agent.type === 'claude-code') {
+    if (!hasArg(args, '-p', '--print')) {
+      args.unshift('-p');
+    }
+
+    args.push(
+      `Read and execute the complete Ecosystem AI Runner prompt from ${stageHistory.promptFile}. Follow it exactly, including writing the mandatory output file.`,
+    );
+  }
+
+  return {
+    command: agent.command,
+    args,
+    cwd,
+    stdin: agent.type === 'codex',
+  };
+}
+
+function runAgent({ agent, prompt, stageHistory, cwd, writableRoots }) {
+  const invocation = buildAgentInvocation({
+    agent,
+    stageHistory,
+    cwd,
+    writableRoots,
+  });
 
   return new Promise((resolve, reject) => {
     const logStream = fs.createWriteStream(stageHistory.logFile, { flags: 'a' });
-    const child = spawn(command, args, {
-      cwd,
+    const child = spawn(invocation.command, invocation.args, {
+      cwd: invocation.cwd,
       env: process.env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -579,7 +670,11 @@ function runCodex({ command, baseArgs, prompt, stageHistory, cwd, writableRoots 
       resolve(code);
     });
 
-    child.stdin.end(prompt);
+    if (invocation.stdin) {
+      child.stdin.end(prompt);
+    } else {
+      child.stdin.end();
+    }
   });
 }
 
@@ -684,6 +779,7 @@ function createFallbackOutput({ batch, outputFile, logFile, reason }) {
 
 function buildBatchMetadata({
   ecosystemName,
+  agent,
   runId,
   batch,
   history,
@@ -696,6 +792,14 @@ function buildBatchMetadata({
 }) {
   return {
     ecosystem: ecosystemName,
+    agent: agent
+      ? {
+          name: agent.name,
+          type: agent.type,
+          command: agent.command,
+          args: agent.args,
+        }
+      : null,
     runId,
     status,
     mode: 'centralized-ecosystem',
@@ -725,10 +829,17 @@ function buildBatchMetadata({
   };
 }
 
-function buildBatchSummary({ runId, batch, history, status, exitCode, durationMs, usage, failureReason = null }) {
+function buildBatchSummary({ runId, agent, batch, history, status, exitCode, durationMs, usage, failureReason = null }) {
   return {
     ecosystemRunId: runId,
     mode: 'centralized-ecosystem',
+    agent: agent
+      ? {
+          name: agent.name,
+          type: agent.type,
+          command: agent.command,
+        }
+      : null,
     batch: {
       id: batch.id,
       label: batch.label,
@@ -845,13 +956,12 @@ function log(message) {
 
 async function runBatch({
   ecosystemName,
+  agent,
   runId,
   batch,
   batchIndex,
   historyRoot,
   repositoriesById,
-  codexCommand,
-  codexArgs,
   dryRun,
 }) {
   const history = createStageHistory({
@@ -859,6 +969,7 @@ async function runBatch({
     runId,
     batchIndex,
     batchId: batch.id,
+    agentName: agent.name,
   });
 
   log(
@@ -887,6 +998,7 @@ async function runBatch({
     history.metadataFile,
     buildBatchMetadata({
       ecosystemName,
+      agent,
       runId,
       batch,
       history,
@@ -899,9 +1011,8 @@ async function runBatch({
     ...new Set(batch.tasks.flatMap((task) => task.repositories).map((repositoryId) => repositoriesById.get(repositoryId).root)),
   ];
   const startedAt = Date.now();
-  const exitCode = await runCodex({
-    command: codexCommand,
-    baseArgs: codexArgs,
+  const exitCode = await runAgent({
+    agent,
     prompt,
     stageHistory: history,
     cwd: process.cwd(),
@@ -919,7 +1030,7 @@ async function runBatch({
           batch,
           outputFile: history.outputFile,
           logFile: history.logFile,
-          reason: `codex exec failed with exit code ${exitCode}`,
+          reason: `${agent.name} failed with exit code ${exitCode}`,
         }),
       );
     }
@@ -928,6 +1039,7 @@ async function runBatch({
       history.metadataFile,
       buildBatchMetadata({
         ecosystemName,
+        agent,
         runId,
         batch,
         history,
@@ -935,7 +1047,7 @@ async function runBatch({
         finishedAt: new Date().toISOString(),
         exitCode,
         usage,
-        failureReason: `codex exec failed for batch "${batch.id}" with exit code ${exitCode}.`,
+        failureReason: `${agent.name} failed for batch "${batch.id}" with exit code ${exitCode}.`,
       }),
     );
 
@@ -943,17 +1055,18 @@ async function runBatch({
       history.summaryFile,
       buildBatchSummary({
         runId,
+        agent,
         batch,
         history,
         status: 'failed',
         exitCode,
         durationMs,
         usage,
-        failureReason: `codex exec failed for batch "${batch.id}" with exit code ${exitCode}.`,
+        failureReason: `${agent.name} failed for batch "${batch.id}" with exit code ${exitCode}.`,
       }),
     );
 
-    throw new Error(`codex exec failed for batch "${batch.id}" with exit code ${exitCode}.`);
+    throw new Error(`${agent.name} failed for batch "${batch.id}" with exit code ${exitCode}.`);
   }
 
   readOutputFile(history.outputFile);
@@ -965,6 +1078,7 @@ async function runBatch({
     history.metadataFile,
     buildBatchMetadata({
       ecosystemName,
+      agent,
       runId,
       batch,
       history,
@@ -979,6 +1093,7 @@ async function runBatch({
     history.summaryFile,
     buildBatchSummary({
       runId,
+      agent,
       batch,
       history,
       status: 'success',
@@ -1022,14 +1137,11 @@ async function main() {
     repositoriesById: repositories.byId,
   });
   const batches = resolveBatches(options, taskIndex);
-  const codexCommand = (config.codex && config.codex.command) || 'codex';
-  const codexArgs =
-    (config.codex && Array.isArray(config.codex.args) && config.codex.args.length > 0)
-      ? config.codex.args
-      : ['exec', '--ephemeral'];
+  const agent = resolveAgentConfig(config, options.agent);
 
   log(`config: ${configPath}`);
   log(`ecosystem: ${config.name}`);
+  log(`agent: ${agent.name} (${agent.type})`);
   log(`sdd root: ${sddRoot}`);
   log(`run id: ${runId}`);
   log(`history: ${path.join(historyRoot, runId)}`);
@@ -1037,19 +1149,18 @@ async function main() {
   for (let index = 0; index < batches.length; index += 1) {
     await runBatch({
       ecosystemName: config.name,
+      agent,
       runId,
       batch: batches[index],
       batchIndex: index,
       historyRoot,
       repositoriesById: repositories.byId,
-      codexCommand,
-      codexArgs,
       dryRun: options.dryRun,
     });
   }
 
   if (options.dryRun) {
-    log('dry run complete; codex was not invoked.');
+    log('dry run complete; agent was not invoked.');
     return;
   }
 

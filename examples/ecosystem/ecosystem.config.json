@@ -1,0 +1,43 @@
+{
+  "name": "example-ecosystem",
+  "historyRoot": "runs",
+  "sddRoot": "sdd",
+  "defaultAgent": "codex",
+  "agents": {
+    "codex": {
+      "type": "codex",
+      "command": "codex",
+      "args": ["exec", "--ephemeral"]
+    },
+    "claude-code": {
+      "type": "claude-code",
+      "command": "claude",
+      "args": ["-p"]
+    }
+  },
+  "repositories": [
+    {
+      "id": "backend",
+      "label": "Example Backend",
+      "path": "../../../example-backend",
+      "docsHints": [
+        "Keep repository-local human docs aligned with current backend behavior."
+      ],
+      "validation": [
+        "npm test"
+      ]
+    },
+    {
+      "id": "frontend",
+      "label": "Example Frontend",
+      "path": "../../../example-frontend",
+      "docsHints": [
+        "Keep repository-local feature and route docs aligned with frontend behavior."
+      ],
+      "validation": [
+        "npm run lint",
+        "npm run build"
+      ]
+    }
+  ]
+}

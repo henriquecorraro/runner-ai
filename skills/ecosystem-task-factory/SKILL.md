@@ -70,11 +70,13 @@ repositories:
 validation:
   - npm run typecheck
 docs_targets:
-  - docs/example.md
+  - repo-id:docs/example.md
 depends_on:
   - another-task-id
 ---
 ```
+
+Use `docs_targets` for repository-local human docs. The path format is `repo-id:path/inside/repo.md`.
 
 ## Body Requirements
 
@@ -93,4 +95,5 @@ The task body should describe:
 - Reuse an existing scope when the new task belongs to the same cross-repo change.
 - If a task is open and already covers the request, update it instead of creating a duplicate.
 - Prefer moving a task to `implemented` or `needs-rework` before `done` when the result is still being validated.
+- Keep human docs in the repository that owns them; task files in this runner should only reference those repo-local doc targets.
 - Do not create extra process documents beyond task files and the ecosystem `sdd/README.md`.
