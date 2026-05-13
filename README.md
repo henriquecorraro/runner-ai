@@ -83,6 +83,9 @@ ln -s "$PWD/skills/ecosystem-bootstrap" \
 ln -s "$PWD/skills/ecosystem-task-factory" \
   "$HOME/.codex/skills/ecosystem-task-factory"
 
+ln -s "$PWD/skills/ecosystem-task-executor" \
+  "$HOME/.codex/skills/ecosystem-task-executor"
+
 ln -s "$PWD/skills/ecosystem-task-closer" \
   "$HOME/.codex/skills/ecosystem-task-closer"
 
@@ -126,6 +129,11 @@ Avalie a qualidade das docs humanas dos repositórios e me mostre se há gaps
 ```text
 Use the `ecosystem-task-factory` skill.
 Crie tasks para o scope onboarding no ecossistema flow
+```
+
+```text
+Use the `ecosystem-task-executor` skill.
+Execute a task onboarding-backend no ecossistema flow via runner a partir deste chat.
 ```
 
 ```text
