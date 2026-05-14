@@ -1,0 +1,43 @@
+{
+  "name": "ecosystem-ai-runner",
+  "version": "0.1.0",
+  "description": "Plan, track, and execute centralized ecosystem tasks through Codex chat with MCP-backed tools.",
+  "author": {
+    "name": "Ecosystem AI Runner",
+    "email": "support@example.com",
+    "url": "https://example.com/ecosystem-ai-runner"
+  },
+  "homepage": "https://example.com/ecosystem-ai-runner",
+  "repository": "https://example.com/ecosystem-ai-runner",
+  "license": "MIT",
+  "keywords": [
+    "ecosystem",
+    "tasks",
+    "mcp",
+    "codex",
+    "sdd"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Ecosystem AI Runner",
+    "shortDescription": "Manage ecosystem tasks from Codex chat",
+    "longDescription": "Plan centralized ecosystem tasks, load active task context, update task status, and explicitly run isolated runner scopes through MCP tools while keeping current-chat execution as the default.",
+    "developerName": "Ecosystem AI Runner",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://example.com/ecosystem-ai-runner",
+    "privacyPolicyURL": "https://example.com/ecosystem-ai-runner/privacy",
+    "termsOfServiceURL": "https://example.com/ecosystem-ai-runner/terms",
+    "defaultPrompt": [
+      "List open tasks for liguelead-platform.",
+      "Plan this change as ecosystem tasks.",
+      "Load this task so we can implement it here."
+    ],
+    "brandColor": "#0F766E",
+    "screenshots": []
+  }
+}

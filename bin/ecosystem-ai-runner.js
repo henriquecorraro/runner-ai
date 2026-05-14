@@ -456,7 +456,23 @@ function buildRepositoryGuidance(repository) {
   return lines;
 }
 
-function buildSharedPrompt({ ecosystemName, batch, repositoriesById, outputFile }) {
+function buildSkillInstructions({ ecosystemDir }) {
+  const sharedSkillsDir = path.resolve(__dirname, '..', 'skills');
+  const ecosystemSkillsDir = path.join(ecosystemDir, 'skills');
+
+  return [
+    'Skill operating instructions:',
+    '- Before editing code, read and follow the umbrella skill when it exists:',
+    `  - ${path.join(sharedSkillsDir, 'ecosystem-operating-mode', 'SKILL.md')}`,
+    '- Then read the specific execution skill when it exists:',
+    `  - ${path.join(sharedSkillsDir, 'ecosystem-task-executor', 'SKILL.md')}`,
+    '- If ecosystem-local skills exist, inspect them and follow any that apply:',
+    `  - ${ecosystemSkillsDir}`,
+    '- If a listed skill path is missing, continue with the instructions already present in this prompt.',
+  ].join('\n');
+}
+
+function buildSharedPrompt({ ecosystemName, ecosystemDir, batch, repositoriesById, outputFile }) {
   const repositories = groupTasksByRepository(batch.tasks, repositoriesById);
   const repositorySections = repositories.map(({ repository, tasks }) => {
     const taskSections = tasks
@@ -512,6 +528,8 @@ function buildSharedPrompt({ ecosystemName, batch, repositoriesById, outputFile 
     `Ecosystem: ${ecosystemName}`,
     `Batch id: ${batch.id}`,
     `Batch label: ${batch.label}`,
+    '',
+    buildSkillInstructions({ ecosystemDir }),
     '',
     'Execution goals:',
     '- Execute every task listed below in the same agent session.',
@@ -956,6 +974,7 @@ function log(message) {
 
 async function runBatch({
   ecosystemName,
+  ecosystemDir,
   agent,
   runId,
   batch,
@@ -988,6 +1007,7 @@ async function runBatch({
 
   const prompt = buildSharedPrompt({
     ecosystemName,
+    ecosystemDir,
     batch,
     repositoriesById,
     outputFile: history.outputFile,
@@ -1149,6 +1169,7 @@ async function main() {
   for (let index = 0; index < batches.length; index += 1) {
     await runBatch({
       ecosystemName: config.name,
+      ecosystemDir: configDir,
       agent,
       runId,
       batch: batches[index],

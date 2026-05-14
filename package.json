@@ -5,11 +5,13 @@
   "description": "Runner for isolated agent execution across multi-repository ecosystems.",
   "type": "commonjs",
   "bin": {
-    "ecosystem-ai-runner": "bin/ecosystem-ai-runner.js"
+    "ecosystem-ai-runner": "bin/ecosystem-ai-runner.js",
+    "ecosystem-ai-mcp": "bin/ecosystem-ai-mcp.js"
   },
   "scripts": {
     "tasks": "node bin/ecosystem-ai-runner.js",
-    "check": "node --check bin/ecosystem-ai-runner.js"
+    "mcp": "node bin/ecosystem-ai-mcp.js",
+    "check": "node --check bin/ecosystem-ai-runner.js && node --check bin/ecosystem-ai-mcp.js"
   },
   "engines": {
     "node": ">=18"

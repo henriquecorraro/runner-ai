@@ -147,6 +147,53 @@ Dry run any mode:
 npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --open-scopes --dry-run
 ```
 
+## MCP For Agents
+
+The preferred chat-based workflow is MCP. The developer speaks naturally, and
+the current agent calls tools to inspect ecosystems, load tasks, remember active
+tasks, create task files, update status, or explicitly run the isolated runner.
+
+Start the MCP server:
+
+```bash
+npm run mcp
+```
+
+Available tool categories:
+
+- operating context: tells the agent to execute in the current chat by default
+- ecosystem and task reads: list ecosystems, list tasks, load one task
+- active task memory: remember tasks created or discussed in this MCP session
+- task writes: create a task or update status
+- runner execution: run the isolated runner only with explicit user confirmation
+
+The default behavior is important: if the user says "pode fazer as tasks" after
+planning work in the same chat, the agent should execute those active tasks in
+the current conversation. It should not call open-tasks or open-scopes through
+the runner unless the user chooses runner execution.
+
+## Codex Plugin
+
+The local plugin wrapper lives at `plugins/ecosystem-ai-runner/`.
+
+Register the marketplace:
+
+```bash
+codex plugin marketplace add /home/rick/projetos/ecosystem-ai-runner
+```
+
+The plugin includes:
+
+- `.codex-plugin/plugin.json`: plugin metadata
+- `.mcp.json`: MCP server configuration
+- `skills/ecosystem-ai-runner/SKILL.md`: plugin operating instructions
+
+Direct MCP registration remains available:
+
+```bash
+codex mcp add ecosystem-ai-runner -- node /home/rick/projetos/ecosystem-ai-runner/bin/ecosystem-ai-mcp.js
+```
+
 ## Execution Model
 
 The runner builds one shared agent batch per selection:
@@ -196,6 +243,12 @@ Use repo doc updates conservatively:
 
 - partial or uncertain result: keep docs small and note the gaps
 - stable result: update the real module docs and move the task to `done`
+
+## Operating Mode Skill
+
+Use [skills/ecosystem-operating-mode/SKILL.md](../skills/ecosystem-operating-mode/SKILL.md) when an agent is working in this runner and needs to choose the right workflow or ecosystem-local skills before acting.
+
+The runner also includes this operating instruction in generated agent prompts so isolated executions load the umbrella guidance before the task-specific workflow.
 
 ## Bootstrap Skill
 

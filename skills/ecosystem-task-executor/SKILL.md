@@ -9,7 +9,7 @@ description: "Execute centralized ecosystem tasks from ecosystem-ai-runner. Use 
 
 Use this skill when the user wants to execute centralized tasks under `ecosystems/<name>/sdd/tasks/`.
 
-The target ecosystem is mandatory. The execution mode is also explicit: current chat or runner via chat.
+The target ecosystem is mandatory. Execution in the current chat is the default when the user refers to tasks already created, changed, or discussed in this conversation. Runner execution requires an explicit user choice.
 
 ## Trigger Phrases
 
@@ -54,12 +54,15 @@ Do not infer the ecosystem from the active editor tab or from recently opened fi
 
 ## Execution Mode Selection
 
-If the user does not choose a mode, ask whether to execute:
+Use the current chat session by default when:
 
-- in the current chat session
-- via runner from this chat
+- the user says "pode fazer as tasks", "faz essas tasks", "implemente essa task", or another contextual reference to tasks from this conversation
+- the task set is small enough to execute in the existing context
+- the user did not explicitly ask for runner isolation
 
-Make the token tradeoff explicit:
+Ask whether to use the runner only when the request is ambiguous and the work appears large, such as a broad scope, many tasks, or open-tasks/open-scopes execution.
+
+Make the token tradeoff explicit when asking:
 
 - Current chat usually has lower token overhead because it continues in the existing session.
 - Runner creates run history and isolates execution, but consumes more tokens because it starts another agent session with a generated prompt, re-reads context, and writes logs.

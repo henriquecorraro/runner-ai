@@ -1,0 +1,20 @@
+{
+  "name": "ecosystem-ai-runner-local",
+  "interface": {
+    "displayName": "Local Ecosystem AI Runner"
+  },
+  "plugins": [
+    {
+      "name": "ecosystem-ai-runner",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ecosystem-ai-runner"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

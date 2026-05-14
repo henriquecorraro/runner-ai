@@ -46,12 +46,51 @@ Follow this pipeline in order:
 
 Do not skip directly to closing tasks. A task should be marked `done` only after the developer confirms the delivered behavior is correct and the stable docs match the implementation.
 
+## Preferred Agent Interface
+
+Prefer MCP when the active AI client supports it. The developer should be able
+to speak naturally in chat while the agent calls runner tools behind the scenes.
+
+Start the MCP server with:
+
+```bash
+npm run mcp
+```
+
+MCP does not mean "always run the isolated runner." The default is:
+
+- plan, inspect, and execute selected tasks in the current chat/agent
+- resolve "essas tasks", "as tasks", or "pode fazer" against tasks created, changed, loaded, or discussed in the current conversation
+- use the isolated runner only when the user explicitly asks for it or confirms it for a large scope/open-task batch
+- mark `done` only after developer validation
+
+## Codex Plugin
+
+This repo includes a local Codex plugin wrapper at:
+
+```text
+plugins/ecosystem-ai-runner/
+```
+
+Register its marketplace from the repo root or with an absolute path:
+
+```bash
+codex plugin marketplace add /home/rick/projetos/ecosystem-ai-runner
+```
+
+If the plugin UI is not managing MCP activation, register the MCP directly:
+
+```bash
+codex mcp add ecosystem-ai-runner -- node /home/rick/projetos/ecosystem-ai-runner/bin/ecosystem-ai-mcp.js
+```
+
 ## Install Or Link Skills
 
 The skills in `skills/` are part of the workflow. Link them into the active AI tool before using the project repeatedly.
 
 Required generic skills:
 
+- `ecosystem-operating-mode`
 - `ecosystem-bootstrap`
 - `ecosystem-task-factory`
 - `ecosystem-task-executor`
@@ -73,6 +112,9 @@ mkdir -p "$HOME/.codex/skills"
 
 ln -sfn "$PWD/skills/ecosystem-bootstrap" \
   "$HOME/.codex/skills/ecosystem-bootstrap"
+
+ln -sfn "$PWD/skills/ecosystem-operating-mode" \
+  "$HOME/.codex/skills/ecosystem-operating-mode"
 
 ln -sfn "$PWD/skills/ecosystem-task-factory" \
   "$HOME/.codex/skills/ecosystem-task-factory"
@@ -111,6 +153,9 @@ mkdir -p "$HOME/.claude/skills"
 ln -sfn "$PWD/skills/ecosystem-bootstrap" \
   "$HOME/.claude/skills/ecosystem-bootstrap"
 
+ln -sfn "$PWD/skills/ecosystem-operating-mode" \
+  "$HOME/.claude/skills/ecosystem-operating-mode"
+
 ln -sfn "$PWD/skills/ecosystem-task-factory" \
   "$HOME/.claude/skills/ecosystem-task-factory"
 
@@ -131,6 +176,9 @@ mkdir -p .claude/skills
 
 ln -sfn "$PWD/skills/ecosystem-bootstrap" \
   ".claude/skills/ecosystem-bootstrap"
+
+ln -sfn "$PWD/skills/ecosystem-operating-mode" \
+  ".claude/skills/ecosystem-operating-mode"
 
 ln -sfn "$PWD/skills/ecosystem-task-factory" \
   ".claude/skills/ecosystem-task-factory"

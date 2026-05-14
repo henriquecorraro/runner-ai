@@ -34,11 +34,12 @@ ecosystem-ai-runner/
 
 Use the skills in this order:
 
-1. `ecosystem-bootstrap`: create or register an ecosystem.
-2. `ecosystem-task-factory`: create centralized task files.
-3. `ecosystem-task-executor`: execute tasks in the current chat or via runner from the chat.
-4. Developer and AI validate the result.
-5. `ecosystem-task-closer`: mark tasks as `done` only after validation.
+1. `ecosystem-operating-mode`: choose the right workflow and local skills.
+2. `ecosystem-bootstrap`: create or register an ecosystem.
+3. `ecosystem-task-factory`: create centralized task files.
+4. `ecosystem-task-executor`: execute tasks in the current chat or via runner from the chat.
+5. Developer and AI validate the result.
+6. `ecosystem-task-closer`: mark tasks as `done` only after validation.
 
 Do not mark tasks as `done` during execution. Use `implemented` or `needs-rework` until the developer confirms the result.
 
@@ -74,6 +75,53 @@ Choose an agent explicitly:
 npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --task <task-id> --agent claude-code
 ```
 
+## MCP For Agents
+
+The preferred long-term interface is MCP: the developer talks normally in the
+AI chat, and the agent calls ecosystem tools behind the scenes.
+
+Start the MCP server with:
+
+```bash
+npm run mcp
+```
+
+The MCP tools are designed around this rule:
+
+- current chat execution is the default, because it reuses the existing brainstorm context
+- contextual phrases like "as tasks" or "pode fazer" refer first to tasks discussed in the current chat
+- the isolated runner is used only when the user explicitly asks for it or confirms it for a large scope/open-task batch
+
+## Codex Plugin
+
+This repository also ships a local Codex plugin wrapper around the MCP server
+and operating skill.
+
+Register the local plugin marketplace:
+
+```bash
+codex plugin marketplace add /home/rick/projetos/ecosystem-ai-runner
+```
+
+The plugin lives at:
+
+```text
+plugins/ecosystem-ai-runner/
+```
+
+For direct MCP usage without relying on plugin UI activation, register the MCP
+server explicitly:
+
+```bash
+codex mcp add ecosystem-ai-runner -- node /home/rick/projetos/ecosystem-ai-runner/bin/ecosystem-ai-mcp.js
+```
+
+Then start Codex from this repo:
+
+```bash
+codex -C /home/rick/projetos/ecosystem-ai-runner
+```
+
 ## Installing Skills
 
 For the full AI-facing setup, see [HOWTOUSE.md](HOWTOUSE.md).
@@ -99,6 +147,9 @@ mkdir -p "$HOME/.codex/skills"
 ln -sfn "$PWD/skills/ecosystem-bootstrap" \
   "$HOME/.codex/skills/ecosystem-bootstrap"
 
+ln -sfn "$PWD/skills/ecosystem-operating-mode" \
+  "$HOME/.codex/skills/ecosystem-operating-mode"
+
 ln -sfn "$PWD/skills/ecosystem-task-factory" \
   "$HOME/.codex/skills/ecosystem-task-factory"
 
@@ -119,6 +170,9 @@ mkdir -p "$HOME/.claude/skills"
 
 ln -sfn "$PWD/skills/ecosystem-bootstrap" \
   "$HOME/.claude/skills/ecosystem-bootstrap"
+
+ln -sfn "$PWD/skills/ecosystem-operating-mode" \
+  "$HOME/.claude/skills/ecosystem-operating-mode"
 
 ln -sfn "$PWD/skills/ecosystem-task-factory" \
   "$HOME/.claude/skills/ecosystem-task-factory"
