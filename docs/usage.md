@@ -211,6 +211,12 @@ When that follow-up task runs, generated human docs should be written in the aff
 
 Use [skills/ecosystem-task-factory/SKILL.md](../skills/ecosystem-task-factory/SKILL.md) when you want to create or split centralized ecosystem tasks.
 
+## Task Executor Skill
+
+Use [skills/ecosystem-task-executor/SKILL.md](../skills/ecosystem-task-executor/SKILL.md) when you want to execute centralized ecosystem tasks.
+
+The executor requires an explicit ecosystem and execution mode. It can run work in the current chat session, or it can ask the AI in the current chat to run the runner. Runner execution creates history, but costs more tokens because it starts another agent session with a generated prompt and logs.
+
 ## Task Closer Skill
 
 Use [skills/ecosystem-task-closer/SKILL.md](../skills/ecosystem-task-closer/SKILL.md) after the user confirms a task is correct and ready to close.
