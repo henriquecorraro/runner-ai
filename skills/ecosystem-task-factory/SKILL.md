@@ -26,8 +26,9 @@ Create ecosystem-level tasks under `ecosystems/<name>/sdd/tasks/` and keep the e
 4. Use `scope` to group related tasks that should run together.
 5. Use `repositories` to declare which repositories each task owns.
 6. Keep all task files in the ecosystem `sdd/tasks/` folder.
-7. Add or update `Task Status` in the ecosystem `sdd/README.md`.
-8. Default new tasks to `status: open`.
+7. Name every task file with its two-digit task number prefix, for example `01-task-id.md`, matching its chronological position in `Task Status`.
+8. Add or update `Task Status` in the ecosystem `sdd/README.md`, keeping entries ordered from oldest to newest and appending newly created tasks at the end.
+9. Default new tasks to `status: open`.
 
 ## Status Model
 
@@ -91,6 +92,8 @@ The task body should describe:
 ## Design Rules
 
 - Keep task ids stable and descriptive.
+- Keep the ecosystem `Task Status` list chronological: older tasks first, newest tasks last.
+- Keep task filenames numbered with the same chronological position as `Task Status`, using a two-digit prefix such as `01-`, `02-`, and `03-`.
 - Prefer one task per implementation responsibility.
 - Reuse an existing scope when the new task belongs to the same cross-repo change.
 - If a task is open and already covers the request, update it instead of creating a duplicate.

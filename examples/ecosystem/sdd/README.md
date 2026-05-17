@@ -8,6 +8,8 @@ The repositories remain the source of code and human documentation. The runner k
 
 - `tasks/`: executable ecosystem tasks
 - use the shared `ecosystem-task-factory` skill for task creation
+- keep task status entries ordered oldest first, with new tasks appended at the end
+- name task files with their two-digit task number prefix, for example `01-example-task.md`
 
 ## Docs Quality Baseline
 

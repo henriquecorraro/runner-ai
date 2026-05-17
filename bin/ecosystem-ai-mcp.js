@@ -288,6 +288,33 @@ function listTasks(ecosystem, filters = {}) {
   return tasks;
 }
 
+function getTaskFileNumber(fileName) {
+  const match = fileName.match(/^(\d+)-/);
+  return match ? Number(match[1]) : null;
+}
+
+function stripTaskFileNumber(id) {
+  return String(id).replace(/^\d+-/, '');
+}
+
+function getNextTaskFileNumber(ecosystem) {
+  const tasks = listTasks(ecosystem);
+  const numbers = tasks
+    .map((task) => getTaskFileNumber(task.fileName))
+    .filter((number) => Number.isInteger(number));
+
+  if (numbers.length) {
+    return Math.max(...numbers) + 1;
+  }
+
+  return tasks.length + 1;
+}
+
+function buildTaskFileName(ecosystem, id) {
+  const number = String(getNextTaskFileNumber(ecosystem)).padStart(2, '0');
+  return `${number}-${stripTaskFileNumber(id)}.md`;
+}
+
 function summarizeTask(task) {
   const { body, ...summary } = task;
   return summary;
@@ -350,20 +377,46 @@ function updateTaskStatusInReadme(ecosystem, task, status) {
   }
 
   const content = fs.readFileSync(readmePath, 'utf8');
-  const statusLinePattern = new RegExp(`(-\\s+\`)(${escapeRegExp(task.status)})(\`\\s+\`${escapeRegExp(task.id)}\`)`);
+  const knownStatuses = [...VALID_TASK_STATUSES].map(escapeRegExp).join('|');
+  const statusLinePattern = new RegExp(`((?:-|\\d+\\.)\\s+\`)(?:${knownStatuses})(\`\\s+\`${escapeRegExp(task.id)}\`)`);
 
   if (statusLinePattern.test(content)) {
-    fs.writeFileSync(readmePath, content.replace(statusLinePattern, `$1${status}$3`));
+    fs.writeFileSync(readmePath, content.replace(statusLinePattern, `$1${status}$2`));
     return { updated: true, path: readmePath };
   }
 
-  if (content.includes('## Task Status')) {
-    const line = `\n- \`${status}\` \`${task.id}\`\n  ${task.title}\n`;
-    fs.writeFileSync(readmePath, content.replace(/(## Task Status\n)/, `$1${line}`));
+  const header = '## Task Status\n';
+  const headerIndex = content.indexOf(header);
+
+  if (headerIndex !== -1) {
+    const sectionStart = headerIndex + header.length;
+    const nextSectionMatch = content.slice(sectionStart).match(/\n##\s/);
+    const sectionEnd = nextSectionMatch ? sectionStart + nextSectionMatch.index : content.length;
+    const sectionBody = content.slice(sectionStart, sectionEnd);
+    const normalizedBody = sectionBody.replace(/^\s*-\s+No tasks yet\s*$/m, '').trim();
+    const numberedMatches = [...sectionBody.matchAll(/^(\d+)\.\s+`/gm)];
+    const nextNumber = numberedMatches.length
+      ? Math.max(...numberedMatches.map((match) => Number(match[1]))) + 1
+      : null;
+    const entry = buildTaskStatusEntry(status, task, nextNumber);
+    const updatedBody = normalizedBody ? `\n${normalizedBody}\n\n${entry}\n` : `\n${entry}\n`;
+
+    fs.writeFileSync(
+      readmePath,
+      `${content.slice(0, sectionStart)}${updatedBody}${content.slice(sectionEnd)}`,
+    );
     return { updated: true, path: readmePath };
   }
 
   return { updated: false, reason: 'Task Status section not found' };
+}
+
+function buildTaskStatusEntry(status, task, number) {
+  if (number) {
+    return `${number}. \`${status}\` \`${task.id}\`\n${' '.repeat(String(number).length + 2)}${task.title}`;
+  }
+
+  return `- \`${status}\` \`${task.id}\`\n  ${task.title}`;
 }
 
 function escapeRegExp(value) {
@@ -385,7 +438,7 @@ function createTask(args) {
   }
 
   fs.mkdirSync(ecosystem.tasksDir, { recursive: true });
-  const taskPath = path.join(ecosystem.tasksDir, `${id}.md`);
+  const taskPath = path.join(ecosystem.tasksDir, buildTaskFileName(ecosystem, id));
 
   if (fs.existsSync(taskPath)) {
     throw new Error(`Task "${id}" already exists.`);
