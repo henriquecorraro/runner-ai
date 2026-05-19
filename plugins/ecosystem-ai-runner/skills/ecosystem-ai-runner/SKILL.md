@@ -1,6 +1,6 @@
 ---
 name: ecosystem-ai-runner
-description: "Use when working with centralized ecosystem tasks through the Ecosystem AI Runner plugin. Applies to planning, creating, loading, executing, updating, or closing ecosystem tasks from Codex chat; prefer MCP tools and execute in the current chat by default."
+description: "Use when working with centralized ecosystem tasks through the Ecosystem AI Runner plugin. Applies to planning, creating, loading, executing, updating, or closing ecosystem tasks from the AI chat (Codex or Claude Code); prefer MCP tools and execute in the current chat by default."
 ---
 
 # Ecosystem AI Runner Plugin

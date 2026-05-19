@@ -122,6 +122,29 @@ Then start Codex from this repo:
 codex -C /home/rick/projetos/ecosystem-ai-runner
 ```
 
+## Claude Code Plugin
+
+The same plugin folder also exposes a Claude Code manifest at
+`plugins/ecosystem-ai-runner/.claude-plugin/plugin.json`, alongside a local
+marketplace declaration at `.claude-plugin/marketplace.json`.
+
+Register the local marketplace and install the plugin from inside Claude Code:
+
+```text
+/plugin marketplace add /home/luiz/liguelead/runner-ai
+/plugin install ecosystem-ai-runner@ecosystem-ai-runner-local
+```
+
+The plugin manifest declares the MCP server inline using `${CLAUDE_PLUGIN_ROOT}`,
+so no manual `claude mcp add` step is required after installation.
+
+For direct MCP usage without going through the plugin UI, register the MCP
+server explicitly instead:
+
+```bash
+claude mcp add ecosystem-ai-runner -- node /home/luiz/liguelead/runner-ai/bin/ecosystem-ai-mcp.js
+```
+
 ## Installing Skills
 
 For the full AI-facing setup, see [HOWTOUSE.md](HOWTOUSE.md).

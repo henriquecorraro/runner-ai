@@ -1,0 +1,29 @@
+{
+  "name": "ecosystem-ai-runner",
+  "version": "0.1.0",
+  "description": "Plan, track, and execute centralized ecosystem tasks through Claude Code with MCP-backed tools.",
+  "author": {
+    "name": "Ecosystem AI Runner",
+    "email": "support@example.com",
+    "url": "https://example.com/ecosystem-ai-runner"
+  },
+  "homepage": "https://example.com/ecosystem-ai-runner",
+  "repository": "https://example.com/ecosystem-ai-runner",
+  "license": "MIT",
+  "keywords": [
+    "ecosystem",
+    "tasks",
+    "mcp",
+    "claude-code",
+    "sdd"
+  ],
+  "skills": "./skills/",
+  "mcpServers": {
+    "ecosystem-ai-runner": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/../../bin/ecosystem-ai-mcp.js"
+      ]
+    }
+  }
+}
