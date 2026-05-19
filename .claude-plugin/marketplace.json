@@ -1,0 +1,23 @@
+{
+  "name": "ecosystem-ai-runner-local",
+  "description": "Local marketplace for the Ecosystem AI Runner plugin (Claude Code).",
+  "owner": {
+    "name": "Ecosystem AI Runner",
+    "email": "support@example.com",
+    "url": "https://example.com/ecosystem-ai-runner"
+  },
+  "plugins": [
+    {
+      "name": "ecosystem-ai-runner",
+      "source": "./plugins/ecosystem-ai-runner",
+      "description": "Plan, track, and execute centralized ecosystem tasks through Claude Code with MCP-backed tools.",
+      "category": "productivity",
+      "keywords": [
+        "ecosystem",
+        "tasks",
+        "mcp",
+        "sdd"
+      ]
+    }
+  ]
+}
