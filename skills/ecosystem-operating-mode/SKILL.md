@@ -31,6 +31,11 @@ If more than one skill applies, use this skill first, then the more specific ski
 ## Operating Rules
 
 - Keep centralized planning in this runner.
+- ENGLISH FIRST for ecosystem SDD: write all files under `ecosystems/<name>/sdd/`
+  in English, including task titles, task bodies, textual frontmatter values,
+  `Task Status` entries, and README notes. User chat can be in another language,
+  but do not mirror that language into centralized SDD artifacts unless the user
+  explicitly asks for a quoted user-facing phrase.
 - Keep code and stable human docs in the owning repositories.
 - Do not mark a task as `done` until the developer explicitly confirms the result is correct.
 - During implementation, use `implemented` or `needs-rework` to match the actual state.

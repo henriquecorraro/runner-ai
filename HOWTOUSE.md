@@ -46,6 +46,21 @@ Follow this pipeline in order:
 
 Do not skip directly to closing tasks. A task should be marked `done` only after the developer confirms the delivered behavior is correct and the stable docs match the implementation.
 
+## Language Contract
+
+ENGLISH FIRST for ecosystem SDD.
+
+All centralized ecosystem SDD artifacts must be written in English:
+
+- task files under `ecosystems/<name>/sdd/tasks/`
+- task titles, task body sections, and textual frontmatter values
+- `Task Status` entries in `ecosystems/<name>/sdd/README.md`
+- ecosystem SDD README notes and run prompts
+
+The user may speak Portuguese or another language in chat. Translate planning
+content into English before writing SDD artifacts. Only preserve another
+language for exact quoted user-facing copy that the product must display.
+
 ## Preferred Agent Interface
 
 Prefer MCP when the active AI client supports it. The developer should be able
@@ -237,6 +252,9 @@ This skill creates or updates files under:
 ```text
 ecosystems/<name>/sdd/tasks/
 ```
+
+All task content and matching SDD README updates must follow the English-first
+language contract above.
 
 Prompt example:
 

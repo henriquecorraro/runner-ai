@@ -11,6 +11,14 @@ Use this skill when the user wants to execute centralized tasks under `ecosystem
 
 The target ecosystem is mandatory. Execution in the current chat is the default when the user refers to tasks already created, changed, or discussed in this conversation. Runner execution requires an explicit user choice.
 
+## Language Rule
+
+ENGLISH FIRST for ecosystem SDD content. When updating task files, task status
+entries, SDD README notes, run summaries, or any other centralized SDD artifact,
+write in English even if the user conversation is in Portuguese. Only preserve
+another language for exact user-facing strings that the implementation itself
+must show.
+
 ## Trigger Phrases
 
 Use this skill for requests like:

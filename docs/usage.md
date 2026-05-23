@@ -6,6 +6,17 @@ It no longer depends on `docs/sdd` inside the target repositories.
 
 Human-facing repository docs stay in the repositories that own them. This runner stores only the ecosystem config, central tasks, run history, and docs-quality baselines.
 
+## Language Contract
+
+ENGLISH FIRST for ecosystem SDD.
+
+Write centralized ecosystem SDD artifacts in English, including task files,
+task titles, task body sections, textual frontmatter values, `Task Status`
+entries, ecosystem SDD README notes, and generated run prompts. The chat with
+the user may be in Portuguese or another language, but planning content must be
+translated to English before it is written to SDD. Preserve another language
+only for exact user-facing copy that a product task explicitly requires.
+
 ## Ecosystem Layout
 
 Each ecosystem should look like this:

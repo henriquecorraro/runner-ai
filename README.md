@@ -26,6 +26,7 @@ ecosystem-ai-runner/
 - repositories stay focused on code and repo-local docs
 - ecosystem planning stays centralized in this runner
 - tasks live in `ecosystems/<name>/sdd/tasks/`
+- centralized ecosystem SDD artifacts are English-first, even when the chat is in another language
 - related tasks can share the same `scope`
 - the runner can execute one task, one scope, all open tasks, or all open scopes
 - work follows the sequence: create ecosystem, create tasks, execute tasks, validate with the developer, then close tasks

@@ -462,6 +462,8 @@ function buildSkillInstructions({ ecosystemDir }) {
 
   return [
     'Skill operating instructions:',
+    '- ENGLISH FIRST for ecosystem SDD artifacts: task files, titles, body text, textual frontmatter, Task Status entries, SDD README updates, run prompts, and output summaries must be written in English.',
+    '- The user conversation may be in Portuguese or another language; translate planning content to English before writing centralized SDD artifacts.',
     '- Before editing code, read and follow the umbrella skill when it exists:',
     `  - ${path.join(sharedSkillsDir, 'ecosystem-operating-mode', 'SKILL.md')}`,
     '- Then read the specific execution skill when it exists:',
@@ -533,6 +535,7 @@ function buildSharedPrompt({ ecosystemName, ecosystemDir, batch, repositoriesByI
     '',
     'Execution goals:',
     '- Execute every task listed below in the same agent session.',
+    '- Keep all centralized ecosystem SDD updates and the mandatory output file in English.',
     '- Use the task repository ownership to decide where to edit code.',
     '- Keep cross-repository contract changes aligned across all affected repositories.',
     '- Keep execution summaries short and operational to control token cost.',

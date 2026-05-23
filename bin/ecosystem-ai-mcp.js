@@ -557,6 +557,8 @@ function getOperatingContext(args) {
     runnerRequiresExplicitUserChoice: true,
     contextualTaskReferencesUseCurrentConversationFirst: true,
     guidance: [
+      'ENGLISH FIRST for ecosystem SDD: write task files, task titles, task body sections, textual frontmatter values, Task Status entries, SDD README updates, and run prompts in English.',
+      'The user may chat in Portuguese or another language; translate planning content to English before writing centralized SDD artifacts.',
       'Use the current chat/agent for task execution by default to reuse context and save tokens.',
       'Resolve "as tasks", "essas tasks", and "pode fazer" against tasks created, changed, or discussed in this conversation before listing all open tasks.',
       'Use the runner only when the user explicitly asks for runner execution or confirms it for a large scope/open-task batch.',
@@ -634,7 +636,8 @@ const tools = [
   },
   {
     name: 'create_task',
-    description: 'Create a centralized task file and remember it as active for the current conversation.',
+    description:
+      'Create a centralized task file and remember it as active for the current conversation. Task titles, body text, and textual metadata must be written in English.',
     inputSchema: {
       type: 'object',
       required: ['ecosystem', 'title', 'repositories', 'body'],

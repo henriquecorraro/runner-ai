@@ -10,6 +10,10 @@ Use this plugin skill when the user asks to plan, inspect, execute, or close eco
 ## Default Behavior
 
 - Use MCP tools from the `ecosystem-ai-runner` server when available.
+- ENGLISH FIRST for ecosystem SDD: write task files, task titles, task body
+  sections, textual frontmatter values, `Task Status` entries, SDD README
+  updates, and run prompts in English. Do not mirror the user's chat language
+  into centralized SDD artifacts unless preserving an exact user-facing string.
 - Keep execution in the current chat by default to reuse brainstorm context and save tokens.
 - Resolve "essas tasks", "as tasks", "pode fazer", and similar references against tasks created, changed, loaded, or discussed in this conversation first.
 - Use the isolated runner only when the user explicitly asks for it or confirms it for a large scope/open-task batch.

@@ -15,6 +15,16 @@ It replaces repeated `task-factory.md` files inside each ecosystem.
 
 Create ecosystem-level tasks under `ecosystems/<name>/sdd/tasks/` and keep the ecosystem `sdd/README.md` aligned.
 
+## Language Rule
+
+ENGLISH FIRST for all ecosystem SDD artifacts.
+
+Write every task file, task title, task body section, textual frontmatter value,
+`Task Status` entry, and ecosystem `sdd/README.md` update in English. The user
+may describe the work in Portuguese or another language, but the centralized SDD
+must not mirror that language. Only use another language for exact quoted
+user-facing copy when the task explicitly requires it.
+
 ## Workflow
 
 1. Read the target ecosystem folder, especially:
