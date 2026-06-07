@@ -9,6 +9,7 @@ const { ensureString, ensureStringArray } = require('../lib/utils');
 const { listEcosystems, getEcosystem, ROOT } = require('../lib/ecosystems');
 const { VALID_TASK_STATUSES, listTasks, resolveTask, summarizeTask, rememberActiveTasks, getActiveTasks, createTask, setTaskStatus } = require('../lib/tasks');
 const { runWithRunner } = require('../lib/runner');
+const { launchParallel, getParallelStatus, listParallelRuns, MAX_CONCURRENCY } = require('../lib/parallel-runner');
 
 // --- JSON-RPC helpers ---
 
@@ -85,6 +86,36 @@ const tools = [
       properties: { ecosystem: { type: 'string' }, selection: { type: 'string', enum: ['task', 'scope', 'feature', 'open-tasks', 'open-scopes'] }, value: { type: 'string' }, agent: { type: 'string' }, dryRun: { type: 'boolean' }, userConfirmedRunner: { type: 'boolean' } },
     },
   },
+  {
+    name: 'run_parallel',
+    description: `Launch ecosystem tasks in parallel (up to ${MAX_CONCURRENCY} physical cores). Each task runs in its own process/core. Returns a runId to monitor progress.`,
+    inputSchema: {
+      type: 'object', required: ['ecosystem', 'taskIds', 'userConfirmedRunner'],
+      properties: {
+        ecosystem: { type: 'string' },
+        taskIds: { type: 'array', items: { type: 'string' }, description: 'Task IDs to execute in parallel.' },
+        agent: { type: 'string', description: 'Agent name (default: ecosystem default).' },
+        concurrency: { type: 'number', description: `Max parallel workers. Default: ${MAX_CONCURRENCY} (physical cores).` },
+        userConfirmedRunner: { type: 'boolean' },
+      },
+    },
+  },
+  {
+    name: 'parallel_status',
+    description: 'Check status of a parallel run. Shows progress, per-task status, and live log tail.',
+    inputSchema: {
+      type: 'object', required: ['runId'],
+      properties: {
+        runId: { type: 'string', description: 'The parallel run ID returned by run_parallel.' },
+        taskId: { type: 'string', description: 'Optional: get detailed status + log tail for one specific task.' },
+      },
+    },
+  },
+  {
+    name: 'list_parallel_runs',
+    description: 'List all active parallel runs with their progress.',
+    inputSchema: { type: 'object', properties: {} },
+  },
 ];
 
 // --- Tool handlers ---
@@ -144,6 +175,14 @@ function callTool(name, args = {}) {
     case 'create_task': return createTask(args, getEcosystem);
     case 'set_task_status': return setTaskStatus(args, getEcosystem);
     case 'run_with_runner': return runWithRunner(args, getEcosystem);
+    case 'run_parallel': {
+      if (args.userConfirmedRunner !== true) throw new Error('Parallel execution requires userConfirmedRunner: true.');
+      const eco = getEcosystem(args.ecosystem);
+      const taskIds = ensureStringArray(args.taskIds, 'taskIds', true);
+      return launchParallel({ ecosystem: eco, taskIds, agent: args.agent, concurrency: args.concurrency });
+    }
+    case 'parallel_status': return getParallelStatus(args.runId, args.taskId);
+    case 'list_parallel_runs': return listParallelRuns();
     default: throw new Error(`Unknown tool: ${name}`);
   }
 }

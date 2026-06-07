@@ -91,6 +91,8 @@ Use `docs_targets` for repository-local human docs. The path format is `repo-id:
 
 ## Body Requirements
 
+Task bodies are consumed exclusively by AI agents. Write terse implementation specs: state what to do, constraints, and expected outcome. Omit motivational context, verbose explanations, and prose transitions.
+
 The task body should describe:
 
 - goal
