@@ -91,13 +91,22 @@ Use `docs_targets` for repository-local human docs. The path format is `repo-id:
 
 ## Body Requirements
 
-The task body should describe:
+Task bodies are consumed exclusively by AI agents. Write terse implementation specs: state what to do, constraints, and expected outcome. Omit motivational context, verbose explanations, and prose transitions.
 
-- goal
-- affected behavior
-- implementation constraints
-- required docs alignment
-- validation expectations
+Rules:
+- Terse, declarative, structured. Zero prose, zero transitions.
+- Use tables for schemas, mappings, enumerations.
+- Use code blocks for SQL, TypeScript types, file paths, shell commands.
+- Include exact SQL queries when DB access is involved.
+- Include TypeScript type shapes for request/response contracts.
+- Include file paths where code must be created/modified.
+- Include static data maps inline — never reference external tables.
+- Include value conversion rules explicitly.
+- Include error cases with HTTP status codes.
+- State what NOT to do when common pitfalls exist.
+- Never use "Context" sections, narrative paragraphs, or "The platform needs..." sentences.
+- Never explain WHY — only WHAT and HOW.
+- Imperative mood: "must", "do", "return" — never "should", "could", "might".
 
 ## Design Rules
 

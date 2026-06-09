@@ -9,6 +9,7 @@ const { ensureString, ensureStringArray } = require('../lib/utils');
 const { listEcosystems, getEcosystem, ROOT } = require('../lib/ecosystems');
 const { VALID_TASK_STATUSES, listTasks, resolveTask, summarizeTask, rememberActiveTasks, getActiveTasks, createTask, setTaskStatus } = require('../lib/tasks');
 const { runWithRunner } = require('../lib/runner');
+const { launchParallel, getParallelStatus, listParallelRuns, MAX_CONCURRENCY } = require('../lib/parallel-runner');
 
 // --- JSON-RPC helpers ---
 
@@ -66,7 +67,7 @@ const tools = [
   },
   {
     name: 'create_task',
-    description: 'Create a centralized task file. Titles and body must be in English.',
+    description: 'Create a centralized task file. Titles and body must be in English. Body must be terse machine-readable specs for AI agent execution: declarative, structured, zero prose. Follow taskWritingRules from get_operating_context.',
     inputSchema: {
       type: 'object', required: ['ecosystem', 'title', 'repositories', 'body'],
       properties: { ecosystem: { type: 'string' }, id: { type: 'string' }, title: { type: 'string' }, scope: { type: 'string' }, repositories: { type: 'array', items: { type: 'string' } }, validation: { type: 'array', items: { type: 'string' } }, docsTargets: { type: 'array', items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'string' } }, body: { type: 'string' } },
@@ -84,6 +85,36 @@ const tools = [
       type: 'object', required: ['ecosystem', 'selection', 'userConfirmedRunner'],
       properties: { ecosystem: { type: 'string' }, selection: { type: 'string', enum: ['task', 'scope', 'feature', 'open-tasks', 'open-scopes'] }, value: { type: 'string' }, agent: { type: 'string' }, dryRun: { type: 'boolean' }, userConfirmedRunner: { type: 'boolean' } },
     },
+  },
+  {
+    name: 'run_parallel',
+    description: `Launch ecosystem tasks in parallel (up to ${MAX_CONCURRENCY} physical cores). Each task runs in its own process/core. Returns a runId to monitor progress.`,
+    inputSchema: {
+      type: 'object', required: ['ecosystem', 'taskIds', 'userConfirmedRunner'],
+      properties: {
+        ecosystem: { type: 'string' },
+        taskIds: { type: 'array', items: { type: 'string' }, description: 'Task IDs to execute in parallel.' },
+        agent: { type: 'string', description: 'Agent name (default: ecosystem default).' },
+        concurrency: { type: 'number', description: `Max parallel workers. Default: ${MAX_CONCURRENCY} (physical cores).` },
+        userConfirmedRunner: { type: 'boolean' },
+      },
+    },
+  },
+  {
+    name: 'parallel_status',
+    description: 'Check status of a parallel run. Shows progress, per-task status, and live log tail.',
+    inputSchema: {
+      type: 'object', required: ['runId'],
+      properties: {
+        runId: { type: 'string', description: 'The parallel run ID returned by run_parallel.' },
+        taskId: { type: 'string', description: 'Optional: get detailed status + log tail for one specific task.' },
+      },
+    },
+  },
+  {
+    name: 'list_parallel_runs',
+    description: 'List all active parallel runs with their progress.',
+    inputSchema: { type: 'object', properties: {} },
   },
 ];
 
@@ -109,6 +140,23 @@ function getOperatingContext(args) {
       'Resolve contextual task references against the current conversation first.',
       'Use the runner only when the user explicitly asks.',
       'Do not mark tasks done until the user confirms validation.',
+    ],
+    taskWritingRules: [
+      'Tasks are consumed EXCLUSIVELY by AI agents. Never write for humans.',
+      'Terse, declarative, structured. Zero prose, zero motivational context, zero transitions.',
+      'State: what to do, constraints, expected output. Nothing else.',
+      'Use tables for schemas, mappings, and enumerations.',
+      'Use code blocks for SQL, TypeScript types, file paths, and shell commands.',
+      'Include exact SQL queries when DB access is involved.',
+      'Include TypeScript type shapes for request/response contracts.',
+      'Include file paths where code should be created/modified.',
+      'Include static data maps (enums, status codes) inline — never say "see table X".',
+      'Include value conversion rules (e.g., BRL decimal → cents).',
+      'Include error cases and their expected HTTP status codes.',
+      'Mention what NOT to do when there is a common pitfall.',
+      'Never use "Context" sections explaining background, narrative paragraphs, or sentences like "The new platform needs...".',
+      'Never explain WHY something is needed — only WHAT and HOW.',
+      'Use imperative mood: "must", "do", "return" — never "should", "could", "might".',
     ],
     sharedSkills,
     ecosystem,
@@ -144,6 +192,14 @@ function callTool(name, args = {}) {
     case 'create_task': return createTask(args, getEcosystem);
     case 'set_task_status': return setTaskStatus(args, getEcosystem);
     case 'run_with_runner': return runWithRunner(args, getEcosystem);
+    case 'run_parallel': {
+      if (args.userConfirmedRunner !== true) throw new Error('Parallel execution requires userConfirmedRunner: true.');
+      const eco = getEcosystem(args.ecosystem);
+      const taskIds = ensureStringArray(args.taskIds, 'taskIds', true);
+      return launchParallel({ ecosystem: eco, taskIds, agent: args.agent, concurrency: args.concurrency });
+    }
+    case 'parallel_status': return getParallelStatus(args.runId, args.taskId);
+    case 'list_parallel_runs': return listParallelRuns();
     default: throw new Error(`Unknown tool: ${name}`);
   }
 }

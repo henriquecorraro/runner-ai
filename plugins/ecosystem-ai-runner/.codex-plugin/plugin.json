@@ -1,6 +1,6 @@
 {
   "name": "ecosystem-ai-runner",
-  "version": "0.1.0",
+  "version": "0.1.0+codex.20260605011834",
   "description": "Plan, track, and execute centralized ecosystem tasks through Codex chat with MCP-backed tools.",
   "author": {
     "name": "Ecosystem AI Runner",
