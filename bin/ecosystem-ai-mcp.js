@@ -116,6 +116,23 @@ const tools = [
     description: 'List all active parallel runs with their progress.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'run_kiro_parallel',
+    description: `Launch ecosystem tasks in parallel using kiro-cli agents (up to ${MAX_CONCURRENCY} cores). Each task runs in its own kiro-cli process. Use when user asks to run tasks with kiro runner. Returns a runId to monitor with parallel_status.`,
+    inputSchema: {
+      type: 'object', required: ['ecosystem', 'userConfirmedRunner'],
+      properties: {
+        ecosystem: { type: 'string' },
+        taskIds: { type: 'array', items: { type: 'string' }, description: 'Task IDs to execute. If omitted with openTasks=true, runs all actionable tasks.' },
+        scope: { type: 'string', description: 'Run all actionable tasks in this scope.' },
+        openTasks: { type: 'boolean', description: 'Run all open/needs-rework tasks.' },
+        concurrency: { type: 'number', description: `Max parallel workers. Default: ${MAX_CONCURRENCY}.` },
+        model: { type: 'string', description: 'Model override (e.g. claude-opus-4).' },
+        effort: { type: 'string', description: 'Effort level: low, medium, high, xhigh, max. Default: max.' },
+        userConfirmedRunner: { type: 'boolean' },
+      },
+    },
+  },
 ];
 
 // --- Tool handlers ---
@@ -164,6 +181,71 @@ function getOperatingContext(args) {
   };
 }
 
+// --- Kiro parallel runner ---
+
+const kiroRuns = new Map();
+
+function launchKiroParallel(args) {
+  if (args.userConfirmedRunner !== true) throw new Error('Kiro runner requires userConfirmedRunner: true.');
+  const eco = getEcosystem(args.ecosystem);
+
+  const runId = `kiro-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const pyArgs = ['-m', 'runners.kiro', '--config', eco.configPath, '--run-id', runId, '--no-tui'];
+
+  if (args.taskIds && args.taskIds.length > 0) {
+    for (const id of ensureStringArray(args.taskIds, 'taskIds', true)) {
+      pyArgs.push('--task', id);
+    }
+  } else if (args.scope) {
+    pyArgs.push('--scope', ensureString(args.scope, 'scope'));
+  } else if (args.openTasks) {
+    pyArgs.push('--open-tasks');
+  } else {
+    throw new Error('Provide taskIds, scope, or openTasks: true.');
+  }
+
+  if (args.concurrency) pyArgs.push('--concurrency', String(args.concurrency));
+
+  const env = { ...process.env };
+  if (args.model) env.KIRO_MODEL = args.model;
+  if (args.effort) env.KIRO_EFFORT = args.effort;
+
+  const logsDir = path.join(ROOT, 'ecosystems', eco.directoryName, 'runs', runId);
+  fs.mkdirSync(logsDir, { recursive: true });
+  const orchestratorLog = path.join(logsDir, 'orchestrator.log');
+  const logStream = fs.createWriteStream(orchestratorLog, { flags: 'w' });
+
+  const { spawn } = require('node:child_process');
+  const child = spawn('python3', pyArgs, { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
+
+  const state = { runId, ecosystem: eco.directoryName, pid: child.pid, status: 'running', startedAt: new Date().toISOString(), finishedAt: null, exitCode: null, lastLines: [], logsDir };
+  kiroRuns.set(runId, state);
+
+  child.stdout.on('data', (chunk) => {
+    logStream.write(chunk);
+    const lines = chunk.toString().split('\n').filter(Boolean);
+    state.lastLines = lines.slice(-10);
+  });
+  child.stderr.on('data', (chunk) => { logStream.write(chunk); });
+  child.on('close', (code) => {
+    logStream.end();
+    state.status = code === 0 ? 'success' : 'failed';
+    state.exitCode = code;
+    state.finishedAt = new Date().toISOString();
+  });
+  child.on('error', (err) => {
+    logStream.end();
+    state.status = 'failed';
+    state.exitCode = -1;
+    state.error = err.message;
+    state.finishedAt = new Date().toISOString();
+  });
+
+  return { runId, ecosystem: eco.directoryName, pid: child.pid, logsDir, message: `Kiro runner started. Monitor with parallel_status(runId="${runId}") or check ${logsDir}` };
+}
+
+// --- Tool handlers ---
+
 function callTool(name, args = {}) {
   switch (name) {
     case 'get_operating_context': return getOperatingContext(args);
@@ -198,8 +280,26 @@ function callTool(name, args = {}) {
       const taskIds = ensureStringArray(args.taskIds, 'taskIds', true);
       return launchParallel({ ecosystem: eco, taskIds, agent: args.agent, concurrency: args.concurrency });
     }
-    case 'parallel_status': return getParallelStatus(args.runId, args.taskId);
-    case 'list_parallel_runs': return listParallelRuns();
+    case 'parallel_status': {
+      if (kiroRuns.has(args.runId)) {
+        const kr = kiroRuns.get(args.runId);
+        const result = { ...kr };
+        // Read last lines from orchestrator log
+        const logPath = path.join(kr.logsDir, 'orchestrator.log');
+        if (fs.existsSync(logPath)) {
+          const content = fs.readFileSync(logPath, 'utf8');
+          result.tailLog = content.split('\n').slice(-20).join('\n');
+        }
+        return result;
+      }
+      return getParallelStatus(args.runId, args.taskId);
+    }
+    case 'list_parallel_runs': {
+      const codexRuns = listParallelRuns();
+      const kiro = [...kiroRuns.values()].map((r) => ({ runId: r.runId, ecosystem: r.ecosystem, type: 'kiro', status: r.status, pid: r.pid, startedAt: r.startedAt }));
+      return [...codexRuns.map((r) => ({ ...r, type: 'codex' })), ...kiro];
+    }
+    case 'run_kiro_parallel': return launchKiroParallel(args);
     default: throw new Error(`Unknown tool: ${name}`);
   }
 }
