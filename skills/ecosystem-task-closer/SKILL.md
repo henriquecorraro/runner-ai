@@ -34,9 +34,16 @@ Use this skill for requests like:
 5. Inspect the relevant code and recent task output only enough to write accurate final docs.
 6. Update human docs inside the affected repositories, not inside this runner.
 7. Run the narrowest useful validation when the task or repository rules require it.
-8. Change each closed task frontmatter to `status: done`.
-9. Update the ecosystem `sdd/README.md` Task Status entry for each closed task.
-10. Offer the optional PR handoff only if it is useful for the affected repositories. Do not create branches, push, or open PRs unless the user explicitly says they want that and provides the PR target branch.
+8. Before closing, ask whether to publish repository changes as PRs when there are unpushed task changes:
+   - ask whether to use the current branch or create a new branch
+   - ask for the PR target branch if it is not already explicit
+   - do not push or open PRs until the user answers
+9. Use MCP `set_task_status` with `status: "done"` and `userValidated: true` for each closed task.
+   - Include a concise `closeoutSummary`.
+   - Include `prHandoff.decision`.
+   - Include `prHandoff.pullRequests` with `{ repository, url }` entries for every PR opened.
+   - When GitHub metadata exists, the tool updates the GitHub card closeout section and moves the Project item to `Done`.
+10. Confirm the ecosystem `sdd/README.md` Task Status entry for each closed task was updated by the tool.
 11. Reply with a short summary of docs updated, validations run, tasks closed, and any PR handoff performed or intentionally skipped.
 
 ## Docs Rules
@@ -59,8 +66,10 @@ Use this skill for requests like:
 
 When closing a task:
 
+- use MCP `set_task_status` instead of editing task status by hand when available
 - update YAML frontmatter from `status: open`, `implemented`, or `needs-rework` to `status: done`
 - update `Task Status` in `ecosystems/<name>/sdd/README.md`
+- update the linked GitHub draft Project card closeout section and move the Project item to `Done` when GitHub metadata exists
 - preserve task ids, titles, scopes, repositories, validation, and dependencies
 - keep `docs_targets` pointing to repository-local docs
 
@@ -79,6 +88,7 @@ This step is opt-in and must be treated as a locked gate after task closure work
 Only perform PR handoff when all of these are true:
 
 - the user explicitly asks to create/push a branch and open a PR, or says yes to an offer to do it
+- the user says whether to use the current branch or create a new branch
 - the user provides the exact PR target branch, such as `develop`, `staging`, or `main`
 - the affected repository worktree is in a state that can be safely committed without including unrelated user changes
 

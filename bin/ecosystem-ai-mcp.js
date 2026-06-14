@@ -7,7 +7,8 @@ const readline = require('node:readline');
 
 const { ensureString, ensureStringArray } = require('../lib/utils');
 const { listEcosystems, getEcosystem, ROOT } = require('../lib/ecosystems');
-const { VALID_TASK_STATUSES, listTasks, resolveTask, summarizeTask, rememberActiveTasks, getActiveTasks, createTask, setTaskStatus } = require('../lib/tasks');
+const { createEcosystem } = require('../lib/ecosystem-create');
+const { VALID_TASK_STATUSES, listTasks, resolveTask, summarizeTask, rememberActiveTasks, getActiveTasks, createTask, setTaskStatus, setTaskBoardStatus } = require('../lib/tasks');
 const { runWithRunner } = require('../lib/runner');
 const { launchParallel, getParallelStatus, listParallelRuns, MAX_CONCURRENCY } = require('../lib/parallel-runner');
 
@@ -43,6 +44,59 @@ const tools = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
+    name: 'create_ecosystem',
+    description: 'Create a centralized ecosystem directory deterministically. If githubProject.url is not known, ask the user for it before calling this tool, unless the user explicitly says no Project is needed; in that case pass skipGithubProject: true.',
+    inputSchema: {
+      type: 'object',
+      required: ['name', 'repositories'],
+      properties: {
+        name: { type: 'string', description: 'Human-readable ecosystem name.' },
+        directoryName: { type: 'string', description: 'Optional ecosystem directory slug. Defaults to a slug from name.' },
+        githubProject: {
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: 'GitHub Projects v2 URL, e.g. https://github.com/orgs/<org>/projects/<number>.' },
+          },
+          required: ['url'],
+        },
+        githubProjectUrl: { type: 'string', description: 'Legacy shorthand for githubProject.url.' },
+        skipGithubProject: { type: 'boolean', description: 'Set true only after the user explicitly confirms this ecosystem does not need a GitHub Project.' },
+        repositories: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['id', 'path'],
+            properties: {
+              id: { type: 'string' },
+              label: { type: 'string' },
+              path: { type: 'string', description: 'Existing local repository path, absolute or relative to the MCP process cwd.' },
+              docsHints: { type: 'array', items: { type: 'string' } },
+              validation: { type: 'array', items: { type: 'string' } },
+            },
+          },
+        },
+        defaultAgent: { type: 'string' },
+        agents: { type: 'object' },
+        sddRoot: { type: 'string' },
+        historyRoot: { type: 'string' },
+        docsQualityBaseline: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['repository', 'score', 'label'],
+            properties: {
+              repository: { type: 'string' },
+              score: { type: 'string' },
+              label: { type: 'string' },
+              evidenceFiles: { type: 'array', items: { type: 'string' } },
+              missingAreas: { type: 'array', items: { type: 'string' } },
+            },
+          },
+        },
+      },
+    },
+  },
+  {
     name: 'list_tasks',
     description: 'List centralized tasks for one ecosystem, optionally filtered by status or scope.',
     inputSchema: {
@@ -67,7 +121,7 @@ const tools = [
   },
   {
     name: 'create_task',
-    description: 'Create a centralized task file. Titles and body must be in English. Body must be terse machine-readable specs for AI agent execution: declarative, structured, zero prose. Follow taskWritingRules from get_operating_context.',
+    description: 'Create a centralized task file and, when the ecosystem has githubProject configured, create the GitHub draft Project card and move it to Todo. Titles and body must be in English. Body must be terse machine-readable specs for AI agent execution: declarative, structured, zero prose. Follow taskWritingRules from get_operating_context.',
     inputSchema: {
       type: 'object', required: ['ecosystem', 'title', 'repositories', 'body'],
       properties: { ecosystem: { type: 'string' }, id: { type: 'string' }, title: { type: 'string' }, scope: { type: 'string' }, repositories: { type: 'array', items: { type: 'string' } }, validation: { type: 'array', items: { type: 'string' } }, docsTargets: { type: 'array', items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'string' } }, body: { type: 'string' } },
@@ -75,8 +129,65 @@ const tools = [
   },
   {
     name: 'set_task_status',
-    description: 'Update a task status. Requires userValidated: true for done.',
-    inputSchema: { type: 'object', required: ['ecosystem', 'task', 'status'], properties: { ecosystem: { type: 'string' }, task: { type: 'string' }, status: { type: 'string', enum: [...VALID_TASK_STATUSES] }, userValidated: { type: 'boolean' } } },
+    description: 'Update a task status. Requires userValidated: true for done. When done and GitHub metadata exists, updates the GitHub draft card closeout section and moves the Project item to Done.',
+    inputSchema: {
+      type: 'object',
+      required: ['ecosystem', 'task', 'status'],
+      properties: {
+        ecosystem: { type: 'string' },
+        task: { type: 'string' },
+        status: { type: 'string', enum: [...VALID_TASK_STATUSES] },
+        userValidated: { type: 'boolean' },
+        closeoutSummary: { type: 'string', description: 'Brief summary of what was done, added to the GitHub card when closing.' },
+        prHandoff: {
+          type: 'object',
+          description: 'Required when status is done. The agent must ask whether to skip PR handoff, use the current branch, or create a new branch before closing.',
+          required: ['decision'],
+          properties: {
+            decision: { type: 'string', enum: ['skip', 'current-branch', 'new-branch'] },
+            targetBranch: { type: 'string', description: 'PR target branch when PR handoff is selected.' },
+            pullRequests: {
+              type: 'array',
+              description: 'Pull requests opened for this task, grouped by repository.',
+              items: {
+                type: 'object',
+                required: ['repository', 'url'],
+                properties: {
+                  repository: { type: 'string' },
+                  url: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        pullRequests: {
+          type: 'array',
+          description: 'Legacy alias for prHandoff.pullRequests.',
+          items: {
+            type: 'object',
+            required: ['repository', 'url'],
+            properties: {
+              repository: { type: 'string' },
+              url: { type: 'string' },
+            },
+          },
+        },
+        comment: { type: 'string', description: 'Legacy alias for closeoutSummary.' },
+      },
+    },
+  },
+  {
+    name: 'set_task_board_status',
+    description: 'Move one task GitHub Project card to Todo, In Progress, Testing, or Done. Use this for current-chat execution lifecycle when not using run_with_runner.',
+    inputSchema: {
+      type: 'object',
+      required: ['ecosystem', 'task', 'status'],
+      properties: {
+        ecosystem: { type: 'string' },
+        task: { type: 'string', description: 'Task id, filename, or unique fragment.' },
+        status: { type: 'string', enum: ['todo', 'in-progress', 'testing', 'done'] },
+      },
+    },
   },
   {
     name: 'run_with_runner',
@@ -88,7 +199,7 @@ const tools = [
   },
   {
     name: 'run_parallel',
-    description: `Launch ecosystem tasks in parallel (up to ${MAX_CONCURRENCY} physical cores). Each task runs in its own process/core. Returns a runId to monitor progress.`,
+    description: `Launch ecosystem tasks in parallel (up to ${MAX_CONCURRENCY} physical cores). Each task runs in its own process/core, moves its GitHub Project card to In Progress when the worker starts, and moves it to Testing after successful completion. Returns a runId to monitor progress.`,
     inputSchema: {
       type: 'object', required: ['ecosystem', 'taskIds', 'userConfirmedRunner'],
       properties: {
@@ -153,6 +264,12 @@ function getOperatingContext(args) {
     contextualTaskReferencesUseCurrentConversationFirst: true,
     guidance: [
       'ENGLISH FIRST for ecosystem SDD artifacts.',
+      'Use create_ecosystem for deterministic ecosystem creation.',
+      'Before create_ecosystem, ask for a GitHub Project URL unless the user explicitly confirms no Project is needed; then pass skipGithubProject: true.',
+      'When creating tasks in an ecosystem with githubProject, create_task also creates the GitHub draft Project card in Todo.',
+      'For current-chat execution, use set_task_board_status(task, "in-progress") before implementation and "testing" after implementation.',
+      'For run_parallel, each task card moves to In Progress when its worker starts and Testing when that worker succeeds.',
+      'When the user validates and asks to document/close a task, ask whether to skip PR handoff, use the current branch, or create a new branch; then use set_task_status(status="done", userValidated=true) with prHandoff, closeoutSummary, and PR URLs so the GitHub card is updated and moved to Done.',
       'Use the current chat/agent for task execution by default.',
       'Resolve contextual task references against the current conversation first.',
       'Use the runner only when the user explicitly asks.',
@@ -250,6 +367,7 @@ function callTool(name, args = {}) {
   switch (name) {
     case 'get_operating_context': return getOperatingContext(args);
     case 'list_ecosystems': return { ecosystems: listEcosystems() };
+    case 'create_ecosystem': return createEcosystem(args);
     case 'list_tasks': {
       const eco = getEcosystem(args.ecosystem);
       return { ecosystem: eco.directoryName, tasks: listTasks(eco, args).map(summarizeTask) };
@@ -273,6 +391,7 @@ function callTool(name, args = {}) {
     }
     case 'create_task': return createTask(args, getEcosystem);
     case 'set_task_status': return setTaskStatus(args, getEcosystem);
+    case 'set_task_board_status': return setTaskBoardStatus(args, getEcosystem);
     case 'run_with_runner': return runWithRunner(args, getEcosystem);
     case 'run_parallel': {
       if (args.userConfirmedRunner !== true) throw new Error('Parallel execution requires userConfirmedRunner: true.');

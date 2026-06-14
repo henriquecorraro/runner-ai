@@ -3,6 +3,7 @@
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const { normalizeGitHubProjectConfig } = require('../lib/github-project');
 
 const DEFAULT_CONFIG_FILE = 'ecosystem.config.json';
 const ACTIONABLE_TASK_STATUSES = new Set(['open', 'needs-rework']);
@@ -171,6 +172,8 @@ function loadConfig(configPath) {
   if (!Array.isArray(config.repositories) || config.repositories.length === 0) {
     throw new Error('Config must define at least one repository.');
   }
+
+  config.githubProject = normalizeGitHubProjectConfig(config.githubProject || config.githubProjectUrl);
 
   return {
     config,
@@ -474,7 +477,7 @@ function buildSkillInstructions({ ecosystemDir }) {
   ].join('\n');
 }
 
-function buildSharedPrompt({ ecosystemName, ecosystemDir, batch, repositoriesById, outputFile }) {
+function buildSharedPrompt({ ecosystemName, ecosystemDir, githubProject, batch, repositoriesById, outputFile }) {
   const repositories = groupTasksByRepository(batch.tasks, repositoriesById);
   const repositorySections = repositories.map(({ repository, tasks }) => {
     const taskSections = tasks
@@ -528,6 +531,7 @@ function buildSharedPrompt({ ecosystemName, ecosystemDir, batch, repositoriesByI
     'You are running one shared Ecosystem AI Runner stage for a centralized ecosystem SDD.',
     '',
     `Ecosystem: ${ecosystemName}`,
+    ...(githubProject ? [`GitHub Project: ${githubProject.url}`] : []),
     `Batch id: ${batch.id}`,
     `Batch label: ${batch.label}`,
     '',
@@ -800,6 +804,7 @@ function createFallbackOutput({ batch, outputFile, logFile, reason }) {
 
 function buildBatchMetadata({
   ecosystemName,
+  githubProject,
   agent,
   runId,
   batch,
@@ -813,6 +818,7 @@ function buildBatchMetadata({
 }) {
   return {
     ecosystem: ecosystemName,
+    githubProject: githubProject || null,
     agent: agent
       ? {
           name: agent.name,
@@ -850,10 +856,11 @@ function buildBatchMetadata({
   };
 }
 
-function buildBatchSummary({ runId, agent, batch, history, status, exitCode, durationMs, usage, failureReason = null }) {
+function buildBatchSummary({ runId, githubProject, agent, batch, history, status, exitCode, durationMs, usage, failureReason = null }) {
   return {
     ecosystemRunId: runId,
     mode: 'centralized-ecosystem',
+    githubProject: githubProject || null,
     agent: agent
       ? {
           name: agent.name,
@@ -978,6 +985,7 @@ function log(message) {
 async function runBatch({
   ecosystemName,
   ecosystemDir,
+  githubProject,
   agent,
   runId,
   batch,
@@ -1011,6 +1019,7 @@ async function runBatch({
   const prompt = buildSharedPrompt({
     ecosystemName,
     ecosystemDir,
+    githubProject,
     batch,
     repositoriesById,
     outputFile: history.outputFile,
@@ -1021,6 +1030,7 @@ async function runBatch({
     history.metadataFile,
     buildBatchMetadata({
       ecosystemName,
+      githubProject,
       agent,
       runId,
       batch,
@@ -1062,6 +1072,7 @@ async function runBatch({
       history.metadataFile,
       buildBatchMetadata({
         ecosystemName,
+        githubProject,
         agent,
         runId,
         batch,
@@ -1078,6 +1089,7 @@ async function runBatch({
       history.summaryFile,
       buildBatchSummary({
         runId,
+        githubProject,
         agent,
         batch,
         history,
@@ -1101,6 +1113,7 @@ async function runBatch({
     history.metadataFile,
     buildBatchMetadata({
       ecosystemName,
+      githubProject,
       agent,
       runId,
       batch,
@@ -1116,6 +1129,7 @@ async function runBatch({
     history.summaryFile,
     buildBatchSummary({
       runId,
+      githubProject,
       agent,
       batch,
       history,
@@ -1164,6 +1178,9 @@ async function main() {
 
   log(`config: ${configPath}`);
   log(`ecosystem: ${config.name}`);
+  if (config.githubProject) {
+    log(`github project: ${config.githubProject.url}`);
+  }
   log(`agent: ${agent.name} (${agent.type})`);
   log(`sdd root: ${sddRoot}`);
   log(`run id: ${runId}`);
@@ -1173,6 +1190,7 @@ async function main() {
     await runBatch({
       ecosystemName: config.name,
       ecosystemDir: configDir,
+      githubProject: config.githubProject,
       agent,
       runId,
       batch: batches[index],

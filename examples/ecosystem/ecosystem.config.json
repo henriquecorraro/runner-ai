@@ -2,6 +2,9 @@
   "name": "example-ecosystem",
   "historyRoot": "runs",
   "sddRoot": "sdd",
+  "githubProject": {
+    "url": "https://github.com/orgs/example-org/projects/1"
+  },
   "defaultAgent": "codex",
   "agents": {
     "codex": {

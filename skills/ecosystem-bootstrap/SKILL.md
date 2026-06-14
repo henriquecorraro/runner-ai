@@ -37,12 +37,16 @@ ecosystems/<name>/
 
 ## Workflow
 
+Prefer the MCP `create_ecosystem` tool when available. Use manual file edits only
+as a fallback or when the requested bootstrap needs repository-doc inspection
+that the tool input does not already provide.
+
 1. Read each repository root and its top-level docs, especially `README.md`, package manifests, and obvious validation scripts.
 2. Identify repository ids, labels, stack, docs hints, and validation commands.
 3. Choose runner agents. Default to `codex` when the user does not choose.
 4. Evaluate the repository's human docs against the shared quality rubric when human docs exist or are clearly expected for that repo type.
-5. Create `ecosystem.config.json` with repository metadata, centralized `sddRoot` / `historyRoot`, `defaultAgent`, and `agents`.
-6. Create `sdd/README.md` describing the ecosystem queue and recording the docs-quality baseline for the selected repositories.
+5. Create `ecosystem.config.json` with repository metadata, GitHub Project URL when available, centralized `sddRoot` / `historyRoot`, `defaultAgent`, and `agents`.
+6. Create `sdd/README.md` describing the ecosystem queue, linking the GitHub Project when configured, and recording the docs-quality baseline for the selected repositories.
 7. Create `sdd/tasks/` as an empty queue directory.
 8. In `sdd/README.md`, make it explicit that tasks are created later, intentionally, through `ecosystem-task-factory`.
 9. Keep the ecosystem generic and runner-friendly. Do not require repo-local SDD folders.
@@ -56,6 +60,8 @@ ecosystems/<name>/
 - If docs are weak, record the gap and suggest a follow-up docs task strategy; do not create those tasks during bootstrap unless the user explicitly asks for it.
 - Any future docs generated from that follow-up task must be written in the affected repository, not inside `ecosystem-ai-runner`.
 - Put repo-specific docs and validation hints in `ecosystem.config.json`.
+- Put the ecosystem GitHub Project under `githubProject.url` when the user provides it or it can be discovered. If no Project exists yet, omit `githubProject` and state that task-card sync cannot be enabled until the URL is configured.
+- When using `create_ecosystem`, pass `skipGithubProject: true` only after the user explicitly confirms that no GitHub Project is needed.
 - Configure `codex` and `claude-code` agents when possible, and set `defaultAgent` to `codex` unless the user asks otherwise.
 - Do not create extra process documentation beyond the files needed by the runner.
 
@@ -65,6 +71,9 @@ Use this shape in `ecosystem.config.json`:
 
 ```json
 {
+  "githubProject": {
+    "url": "https://github.com/orgs/<org>/projects/<number>"
+  },
   "defaultAgent": "codex",
   "agents": {
     "codex": {
