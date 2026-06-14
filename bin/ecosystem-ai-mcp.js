@@ -11,6 +11,8 @@ const { createEcosystem } = require('../lib/ecosystem-create');
 const { VALID_TASK_STATUSES, listTasks, resolveTask, summarizeTask, rememberActiveTasks, getActiveTasks, createTask, setTaskStatus, setTaskBoardStatus } = require('../lib/tasks');
 const { runWithRunner } = require('../lib/runner');
 const { launchParallel, getParallelStatus, listParallelRuns, MAX_CONCURRENCY } = require('../lib/parallel-runner');
+const { getMyActivity } = require('../lib/github-activity');
+const { createGitHubProject } = require('../lib/github-project-create');
 
 // --- JSON-RPC helpers ---
 
@@ -244,6 +246,29 @@ const tools = [
       },
     },
   },
+  {
+    name: 'get_my_activity',
+    description: 'Fetch the authenticated GitHub user\'s activity in an ecosystem\'s GitHub Project, filtered by date range. Use when the user asks what they did on a specific day or period.',
+    inputSchema: {
+      type: 'object', required: ['ecosystem'],
+      properties: {
+        ecosystem: { type: 'string' },
+        since: { type: 'string', description: 'ISO date or date-time. Only items updated on or after this date.' },
+        until: { type: 'string', description: 'ISO date or date-time. Only items updated on or before this date.' },
+      },
+    },
+  },
+  {
+    name: 'create_github_project',
+    description: 'Create a GitHub Project v2 for an ecosystem that does not have one. Creates the project with a Status single-select field (Todo, In Progress, Testing, Done) and updates ecosystem.config.json.',
+    inputSchema: {
+      type: 'object', required: ['ecosystem', 'title'],
+      properties: {
+        ecosystem: { type: 'string' },
+        title: { type: 'string', description: 'Title for the new GitHub Project.' },
+      },
+    },
+  },
 ];
 
 // --- Tool handlers ---
@@ -419,6 +444,16 @@ function callTool(name, args = {}) {
       return [...codexRuns.map((r) => ({ ...r, type: 'codex' })), ...kiro];
     }
     case 'run_kiro_parallel': return launchKiroParallel(args);
+    case 'get_my_activity': {
+      const eco = getEcosystem(args.ecosystem);
+      if (!eco.githubProject) throw new Error(`Ecosystem "${eco.directoryName}" does not have githubProject configured.`);
+      return getMyActivity(eco.githubProject, { since: args.since, until: args.until });
+    }
+    case 'create_github_project': {
+      const eco = getEcosystem(args.ecosystem);
+      if (eco.githubProject) throw new Error(`Ecosystem "${eco.directoryName}" already has githubProject configured: ${eco.githubProject.url}`);
+      return createGitHubProject({ ecosystem: eco, title: ensureString(args.title, 'title') });
+    }
     default: throw new Error(`Unknown tool: ${name}`);
   }
 }
