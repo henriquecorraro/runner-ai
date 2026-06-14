@@ -25,6 +25,7 @@ ecosystem-ai-runner/
 
 - repositories stay focused on code and repo-local docs
 - ecosystem planning stays centralized in this runner
+- ecosystems may link to one GitHub Project through `githubProject.url`
 - tasks live in `ecosystems/<name>/sdd/tasks/`
 - centralized ecosystem SDD artifacts are English-first, even when the chat is in another language
 - related tasks can share the same `scope`
@@ -89,6 +90,10 @@ npm run mcp
 
 The MCP tools are designed around this rule:
 
+- ecosystem creation goes through `create_ecosystem`, which requires either a GitHub Project URL or explicit confirmation to create without one
+- `create_task` creates the GitHub draft Project card in `Todo` when the ecosystem has `githubProject`
+- current-chat task execution uses `set_task_board_status` for `In Progress` and `Testing`
+- validated closure asks for PR handoff intent, then uses `set_task_status(status="done", userValidated=true)` to update the card closeout and move it to `Done`
 - current chat execution is the default, because it reuses the existing brainstorm context
 - contextual phrases like "as tasks" or "pode fazer" refer first to tasks discussed in the current chat
 - the isolated runner is used only when the user explicitly asks for it or confirms it for a large scope/open-task batch

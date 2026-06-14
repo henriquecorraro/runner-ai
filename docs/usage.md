@@ -33,13 +33,14 @@ ecosystems/<name>/
 
 ## Ecosystem Config
 
-Example: [ecosystems/liguelead/ecosystem.config.json](../ecosystems/liguelead/ecosystem.config.json)
+Example: [ecosystems/liguelead-platform/ecosystem.config.json](../ecosystems/liguelead-platform/ecosystem.config.json)
 
 Important fields:
 
 - `name`: ecosystem name
 - `historyRoot`: where runs are stored relative to the ecosystem folder
 - `sddRoot`: where the centralized SDD lives relative to the ecosystem folder
+- `githubProject`: optional GitHub Projects v2 board for this ecosystem
 - `defaultAgent`: default agent key. If omitted, the runner uses `codex`
 - `agents`: named agent configurations
 - `repositories`: local repositories that belong to the ecosystem
@@ -53,6 +54,9 @@ Example:
 
 ```json
 {
+  "githubProject": {
+    "url": "https://github.com/orgs/ligue-lead-tech/projects/3"
+  },
   "defaultAgent": "codex",
   "agents": {
     "codex": {
@@ -70,6 +74,27 @@ Example:
 ```
 
 Legacy `codex.command` and `codex.args` configs are still supported for Codex.
+
+When `githubProject` is present, the runner validates the URL and exposes
+derived metadata to agents:
+
+- `url`: canonical GitHub Project URL
+- `ownerType`: `organization` or `user`
+- `owner`: GitHub organization or username
+- `number`: Project number from the URL
+
+The supported URL shapes are:
+
+- `https://github.com/orgs/<org>/projects/<number>`
+- `https://github.com/users/<user>/projects/<number>`
+
+For task-card sync, the Project must have a single-select `Status` field with
+these options:
+
+- `Todo`
+- `In Progress`
+- `Testing`
+- `Done`
 
 Each repository can define:
 
@@ -173,10 +198,48 @@ npm run mcp
 Available tool categories:
 
 - operating context: tells the agent to execute in the current chat by default
+- ecosystem creation: create an ecosystem deterministically with repository metadata and an optional GitHub Project
 - ecosystem and task reads: list ecosystems, list tasks, load one task
 - active task memory: remember tasks created or discussed in this MCP session
-- task writes: create a task or update status
+- task writes: create a task, move its GitHub Project card, or update runner status
 - runner execution: run the isolated runner only with explicit user confirmation
+
+`create_ecosystem` requires repository metadata and a deterministic GitHub
+Project decision:
+
+- pass `githubProject.url` when the ecosystem should sync future tasks to a GitHub Project
+- pass `skipGithubProject: true` only after the user explicitly confirms that no Project is needed
+- if neither value is known, ask the user before calling the tool
+
+When an ecosystem has `githubProject` configured, `create_task` also creates a
+GitHub draft Project card, links every repository in the card description,
+stores the GitHub identifiers in task frontmatter, and moves the card to
+`Todo`.
+
+Task card lifecycle:
+
+- created: `Todo`
+- implementation started: `In Progress`
+- implementation completed by runner/current chat: `Testing`
+- user validated and task closed: `Done`
+
+Use `set_task_board_status` for current-chat execution. Use `run_with_runner`
+with `selection: "task"` for isolated execution; it moves the card to
+`In Progress` before execution and `Testing` after a successful runner exit.
+Use `run_parallel` for parallel isolated execution; it moves each task card to
+`In Progress` when that worker starts and `Testing` when that worker exits
+successfully.
+Use `set_task_status` with `status: "done"` and `userValidated: true` after
+documentation and user validation; it updates the GitHub card closeout section,
+records any PR URLs supplied through `prHandoff.pullRequests`, and moves the
+Project item to `Done`.
+
+When closing a task, the agent must ask the user for PR handoff intent before
+calling `set_task_status`:
+
+- `prHandoff.decision: "skip"`: close without opening PRs
+- `prHandoff.decision: "current-branch"`: use the current branch, then pass opened PR URLs
+- `prHandoff.decision: "new-branch"`: create a new branch, then pass opened PR URLs
 
 The default behavior is important: if the user says "pode fazer as tasks" after
 planning work in the same chat, the agent should execute those active tasks in
