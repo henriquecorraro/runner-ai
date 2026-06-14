@@ -29,7 +29,19 @@ function send(message) {
 }
 
 function toolContent(value) {
+  if (value && value.content && Array.isArray(value.content)) return value;
   return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] };
+}
+
+function formatActivity(result) {
+  const lines = [`Activity for ${result.user} | Project: ${result.project}`, `Period: ${result.since || 'all'} → ${result.until || 'now'}`, `Total items: ${result.totalItems}`, ''];
+  for (const item of result.items) {
+    lines.push(`- ${item.title}`);
+    lines.push(`  Status: ${item.status || 'N/A'} | Type: ${item.type} | Updated: ${item.updatedAt}`);
+    lines.push(`  URL: ${item.cardUrl}`);
+    lines.push('');
+  }
+  return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
 
 // --- Tool definitions ---
@@ -447,7 +459,8 @@ function callTool(name, args = {}) {
     case 'get_my_activity': {
       const eco = getEcosystem(args.ecosystem);
       if (!eco.githubProject) throw new Error(`Ecosystem "${eco.directoryName}" does not have githubProject configured.`);
-      return getMyActivity(eco.githubProject, { since: args.since, until: args.until });
+      const result = getMyActivity(eco.githubProject, { since: args.since, until: args.until });
+      return formatActivity(result);
     }
     case 'create_github_project': {
       const eco = getEcosystem(args.ecosystem);
