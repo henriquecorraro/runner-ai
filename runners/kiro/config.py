@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from .models import EcosystemConfig, Repository, TaskDef
+from .models import EcosystemConfig, GitHubProject, Repository, TaskDef
 
 ACTIONABLE_STATUSES = {"open", "needs-rework"}
 
@@ -34,6 +34,27 @@ def load_ecosystem(config_path: str) -> EcosystemConfig:
             docs_hints=r.get("docsHints", []),
         ))
 
+    github_project = None
+    gh_raw = raw.get("githubProject")
+    if gh_raw and gh_raw.get("url"):
+        owner = gh_raw.get("owner", "")
+        owner_type = gh_raw.get("ownerType", "organization")
+        number = gh_raw.get("number", 0)
+        # Parse from URL if not explicitly set
+        if not owner or not number:
+            import re as _re
+            m = _re.match(r"https://github\.com/(orgs|users)/([^/]+)/projects/(\d+)", gh_raw["url"])
+            if m:
+                owner_type = "organization" if m.group(1) == "orgs" else "user"
+                owner = owner or m.group(2)
+                number = number or int(m.group(3))
+        github_project = GitHubProject(
+            url=gh_raw["url"],
+            owner=owner,
+            owner_type=owner_type,
+            number=number,
+        )
+
     return EcosystemConfig(
         name=raw["name"],
         config_path=str(p),
@@ -43,6 +64,7 @@ def load_ecosystem(config_path: str) -> EcosystemConfig:
         history_root=str(history_root),
         skills_dir=str(skills_dir),
         repositories=repos,
+        github_project=github_project,
     )
 
 
@@ -106,6 +128,7 @@ def parse_task_file(file_path: str) -> TaskDef:
         body=body,
         file_path=file_path,
         file_name=fname,
+        github_project_item_id=int(meta["github_project_item_id"]) if meta.get("github_project_item_id") else None,
     )
 
 

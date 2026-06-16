@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from .models import EcosystemConfig, Repository, Run, TaskDef, TaskRun, TaskStatus
+from .board import move_task_card
 
 KIRO_CLI = os.environ.get("KIRO_CLI", "kiro-cli")
 KIRO_MODEL = os.environ.get("KIRO_MODEL", "")
@@ -222,6 +223,9 @@ async def run_task(task_run: TaskRun, eco: EcosystemConfig, run_id: str, batch_i
     _write_json(os.path.join(stage_dir, "metadata.json"),
                 _build_metadata(eco, run_id, task, stage_dir, "running", started_at=started_at))
 
+    # Move card to In Progress
+    move_task_card(eco, task, "in-progress")
+
     # Spawn process
     log_path = os.path.join(stage_dir, "kiro.log")
     log_file = open(log_path, "w")
@@ -260,6 +264,10 @@ async def run_task(task_run: TaskRun, eco: EcosystemConfig, run_id: str, batch_i
     task_run.finished_at = datetime.now(timezone.utc)
     task_run.exit_code = exit_code
     task_run.status = TaskStatus.SUCCESS if exit_code == 0 else TaskStatus.FAILED
+
+    # Move card to Testing on success
+    if exit_code == 0:
+        move_task_card(eco, task, "testing")
 
     failure = None if exit_code == 0 else f"kiro failed for task \"{task.id}\" with exit code {exit_code}."
     status_str = "success" if exit_code == 0 else "failed"

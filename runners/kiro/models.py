@@ -14,6 +14,15 @@ class TaskStatus(str, Enum):
 
 
 @dataclass
+class GitHubProject:
+    """GitHub Project V2 metadata from ecosystem config."""
+    url: str
+    owner: str
+    owner_type: str
+    number: int
+
+
+@dataclass
 class TaskDef:
     """Parsed from .md frontmatter."""
     id: str
@@ -27,6 +36,7 @@ class TaskDef:
     body: str
     file_path: str
     file_name: str
+    github_project_item_id: Optional[int] = None
 
 
 @dataclass
@@ -48,6 +58,7 @@ class EcosystemConfig:
     history_root: str
     skills_dir: str
     repositories: list[Repository] = field(default_factory=list)
+    github_project: Optional[GitHubProject] = None
 
 
 @dataclass
