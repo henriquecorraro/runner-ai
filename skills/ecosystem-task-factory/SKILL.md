@@ -35,7 +35,7 @@ user-facing copy when the task explicitly requires it.
 3. Decide whether the request should become one task or multiple tasks.
 4. Use `scope` to group related tasks that should run together.
 5. Use `repositories` to declare which repositories each task owns.
-6. Prefer MCP `create_task` for new tasks so GitHub Project cards are created when the ecosystem has `githubProject`.
+6. Prefer MCP `create_task` for new tasks so all-or-fail GitHub issue and Project sync runs when the ecosystem has `githubProject`.
 7. Keep all task files in the ecosystem `sdd/tasks/` folder.
 8. Name every task file with its two-digit task number prefix, for example `01-task-id.md`, matching its chronological position in `Task Status`.
 9. Add or update `Task Status` in the ecosystem `sdd/README.md`, keeping entries ordered from oldest to newest and appending newly created tasks at the end.
@@ -53,7 +53,8 @@ Use these statuses:
 Default new tasks to `open`.
 
 In ecosystems with `githubProject`, new tasks created through MCP also create a
-GitHub draft Project card in `Todo`.
+GitHub issue in every linked repository, add the primary issue to the Project
+in `Todo`, and assign it to the authenticated user.
 
 ## When To Split
 

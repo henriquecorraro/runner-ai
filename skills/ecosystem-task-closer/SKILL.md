@@ -42,7 +42,7 @@ Use this skill for requests like:
    - Include a concise `closeoutSummary`.
    - Include `prHandoff.decision`.
    - Include `prHandoff.pullRequests` with `{ repository, url }` entries for every PR opened.
-   - When GitHub metadata exists, the tool updates the GitHub card closeout section and moves the Project item to `Done`.
+   - When GitHub metadata exists, the tool updates the GitHub issue closeout section and moves the Project item to `Done`.
 10. Confirm the ecosystem `sdd/README.md` Task Status entry for each closed task was updated by the tool.
 11. Reply with a short summary of docs updated, validations run, tasks closed, and any PR handoff performed or intentionally skipped.
 
@@ -69,7 +69,7 @@ When closing a task:
 - use MCP `set_task_status` instead of editing task status by hand when available
 - update YAML frontmatter from `status: open`, `implemented`, or `needs-rework` to `status: done`
 - update `Task Status` in `ecosystems/<name>/sdd/README.md`
-- update the linked GitHub draft Project card closeout section and move the Project item to `Done` when GitHub metadata exists
+- update the linked GitHub issue closeout section and move the Project item to `Done` when GitHub metadata exists
 - preserve task ids, titles, scopes, repositories, validation, and dependencies
 - keep `docs_targets` pointing to repository-local docs
 

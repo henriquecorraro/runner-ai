@@ -86,11 +86,11 @@ Use this when the user chooses current chat execution.
    - `ecosystems/<name>/sdd/README.md`
    - selected task files under `ecosystems/<name>/sdd/tasks/`
 2. Resolve repository ownership from task frontmatter.
-3. If the task has GitHub Project metadata, use MCP `set_task_board_status` with `status: "in-progress"` before implementation.
+3. Use MCP `start_task_execution` before implementation so the GitHub Project item moves to `In Progress`.
 4. Inspect only the relevant repository files and docs.
 5. Implement the requested task work directly in the current conversation.
 6. Run the narrowest useful validation in each touched repository.
-7. If implementation was delivered, use MCP `set_task_board_status` with `status: "testing"` before final response.
+7. If implementation was delivered, use MCP `finish_task_execution` before final response so the GitHub Project item moves to `Testing`.
 8. If implementation was delivered but not user-validated, update task status to `implemented`, not `done`.
 9. If work is blocked or incomplete, leave or move the task to `needs-rework` and record the concrete gap.
 10. Keep final output short: tasks executed, files changed, validation, and residual gaps.
@@ -107,8 +107,8 @@ Use this when the user chooses runner execution.
 3. Run the same command first with `--dry-run`.
 4. If dry-run fails, report the error and do not run the real execution.
 5. If dry-run succeeds, run the real command from this chat.
-   - For `selection: "task"`, MCP `run_with_runner` moves the GitHub Project card to `In Progress` before execution and `Testing` after successful execution.
-   - For MCP `run_parallel`, each worker moves its task card to `In Progress` when it starts and `Testing` after successful completion.
+   - MCP `run_with_runner` moves every selected GitHub Project item to `In Progress` before execution and `Testing` after successful execution.
+   - MCP `run_parallel` moves each worker task card to `In Progress` when it starts and `Testing` after successful completion.
 6. After the runner finishes, inspect the generated run history:
    - `output.md`
    - `summary.json`

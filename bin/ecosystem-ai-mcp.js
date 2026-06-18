@@ -8,7 +8,19 @@ const readline = require('node:readline');
 const { ensureString, ensureStringArray } = require('../lib/utils');
 const { listEcosystems, getEcosystem, ROOT } = require('../lib/ecosystems');
 const { createEcosystem } = require('../lib/ecosystem-create');
-const { VALID_TASK_STATUSES, listTasks, resolveTask, summarizeTask, rememberActiveTasks, getActiveTasks, createTask, setTaskStatus, setTaskBoardStatus } = require('../lib/tasks');
+const {
+  VALID_TASK_STATUSES,
+  listTasks,
+  resolveTask,
+  summarizeTask,
+  rememberActiveTasks,
+  getActiveTasks,
+  createTask,
+  setTaskStatus,
+  setTaskBoardStatus,
+  startTaskExecution,
+  finishTaskExecution,
+} = require('../lib/tasks');
 const { runWithRunner } = require('../lib/runner');
 const { launchParallel, getParallelStatus, listParallelRuns, MAX_CONCURRENCY } = require('../lib/parallel-runner');
 const { getMyActivity } = require('../lib/github-activity');
@@ -135,7 +147,7 @@ const tools = [
   },
   {
     name: 'create_task',
-    description: 'Create a centralized task file and, when the ecosystem has githubProject configured, create the GitHub draft Project card and move it to Todo. Titles and body must be in English. Body must be terse machine-readable specs for AI agent execution: declarative, structured, zero prose. Follow taskWritingRules from get_operating_context.',
+    description: 'Create a centralized task file. Deterministic GitHub sync is all-or-fail: when githubProject is configured, preflight every linked repository, create GitHub issues in all linked repositories, assign every issue to the authenticated user, add the primary issue to the Project, and move it to Todo before recording the local task. Titles and body must be in English. Body must be terse machine-readable specs for AI agent execution: declarative, structured, zero prose. Follow taskWritingRules from get_operating_context.',
     inputSchema: {
       type: 'object', required: ['ecosystem', 'title', 'repositories', 'body'],
       properties: { ecosystem: { type: 'string' }, id: { type: 'string' }, title: { type: 'string' }, scope: { type: 'string' }, repositories: { type: 'array', items: { type: 'string' } }, validation: { type: 'array', items: { type: 'string' } }, docsTargets: { type: 'array', items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'string' } }, body: { type: 'string' } },
@@ -143,7 +155,7 @@ const tools = [
   },
   {
     name: 'set_task_status',
-    description: 'Update a task status. Requires userValidated: true for done. When done and GitHub metadata exists, updates the GitHub draft card closeout section and moves the Project item to Done.',
+    description: 'Update a task status. Setting implemented moves the GitHub Project item to Testing before recording the local status. Requires userValidated: true for done; done updates the GitHub issue closeout section and moves the Project item to Done.',
     inputSchema: {
       type: 'object',
       required: ['ecosystem', 'task', 'status'],
@@ -204,8 +216,32 @@ const tools = [
     },
   },
   {
+    name: 'start_task_execution',
+    description: 'Deterministically start current-chat execution for one task by moving its GitHub Project item to In Progress before any implementation work.',
+    inputSchema: {
+      type: 'object',
+      required: ['ecosystem', 'task'],
+      properties: {
+        ecosystem: { type: 'string' },
+        task: { type: 'string', description: 'Task id, filename, or unique fragment.' },
+      },
+    },
+  },
+  {
+    name: 'finish_task_execution',
+    description: 'Deterministically finish current-chat implementation for one task by moving its GitHub Project item to Testing after implementation work is complete.',
+    inputSchema: {
+      type: 'object',
+      required: ['ecosystem', 'task'],
+      properties: {
+        ecosystem: { type: 'string' },
+        task: { type: 'string', description: 'Task id, filename, or unique fragment.' },
+      },
+    },
+  },
+  {
     name: 'run_with_runner',
-    description: 'Run the isolated ecosystem runner. Use only after explicit user choice; dryRun defaults to true.',
+    description: 'Run the isolated ecosystem runner. Use only after explicit user choice; dryRun defaults to true. Non-dry-run execution moves every selected task to In Progress before execution and to Testing after successful execution.',
     inputSchema: {
       type: 'object', required: ['ecosystem', 'selection', 'userConfirmedRunner'],
       properties: { ecosystem: { type: 'string' }, selection: { type: 'string', enum: ['task', 'scope', 'feature', 'open-tasks', 'open-scopes'] }, value: { type: 'string' }, agent: { type: 'string' }, dryRun: { type: 'boolean' }, userConfirmedRunner: { type: 'boolean' } },
@@ -303,10 +339,10 @@ function getOperatingContext(args) {
       'ENGLISH FIRST for ecosystem SDD artifacts.',
       'Use create_ecosystem for deterministic ecosystem creation.',
       'Before create_ecosystem, ask for a GitHub Project URL unless the user explicitly confirms no Project is needed; then pass skipGithubProject: true.',
-      'When creating tasks in an ecosystem with githubProject, create_task also creates the GitHub draft Project card in Todo.',
-      'For current-chat execution, use set_task_board_status(task, "in-progress") before implementation and "testing" after implementation.',
-      'For run_parallel, each task card moves to In Progress when its worker starts and Testing when that worker succeeds.',
-      'When the user validates and asks to document/close a task, ask whether to skip PR handoff, use the current branch, or create a new branch; then use set_task_status(status="done", userValidated=true) with prHandoff, closeoutSummary, and PR URLs so the GitHub card is updated and moved to Done.',
+      'When creating tasks in an ecosystem with githubProject, create_task is all-or-fail: it preflights every linked repository, creates GitHub issues in every linked repository, assigns every issue to the authenticated user, adds the primary issue to the Project in Todo, and only then records the local task.',
+      'For current-chat execution, use start_task_execution before implementation and finish_task_execution after implementation; these are required lifecycle gates.',
+      'For run_with_runner and run_parallel, every selected task card moves to In Progress before execution and Testing when that task succeeds.',
+      'When the user validates and asks to document/close a task, ask whether to skip PR handoff, use the current branch, or create a new branch; then use set_task_status(status="done", userValidated=true) with prHandoff, closeoutSummary, and PR URLs so the GitHub issue is updated and the Project item is moved to Done.',
       'Use the current chat/agent for task execution by default.',
       'Resolve contextual task references against the current conversation first.',
       'Use the runner only when the user explicitly asks.',
@@ -429,6 +465,8 @@ function callTool(name, args = {}) {
     case 'create_task': return createTask(args, getEcosystem);
     case 'set_task_status': return setTaskStatus(args, getEcosystem);
     case 'set_task_board_status': return setTaskBoardStatus(args, getEcosystem);
+    case 'start_task_execution': return startTaskExecution(args, getEcosystem);
+    case 'finish_task_execution': return finishTaskExecution(args, getEcosystem);
     case 'run_with_runner': return runWithRunner(args, getEcosystem);
     case 'run_parallel': {
       if (args.userConfirmedRunner !== true) throw new Error('Parallel execution requires userConfirmedRunner: true.');

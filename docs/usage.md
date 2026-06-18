@@ -211,10 +211,14 @@ Project decision:
 - pass `skipGithubProject: true` only after the user explicitly confirms that no Project is needed
 - if neither value is known, ask the user before calling the tool
 
-When an ecosystem has `githubProject` configured, `create_task` also creates a
-GitHub draft Project card, links every repository in the card description,
-stores the GitHub identifiers in task frontmatter, and moves the card to
-`Todo`.
+When an ecosystem has `githubProject` configured, `create_task` also creates
+GitHub issues in every linked repository, adds the primary issue to the
+Project, stores the GitHub identifiers in task frontmatter, assigns the issue to
+the authenticated user, and moves the Project item to `Todo`.
+This GitHub sync is all-or-fail: the tool preflights Project access, `Todo`
+status, issue creation, and assignee eligibility before creating issues; if a
+later GitHub call fails, it removes the Project item and closes any issues it
+created before refusing to write the local task.
 
 Task card lifecycle:
 
@@ -223,14 +227,18 @@ Task card lifecycle:
 - implementation completed by runner/current chat: `Testing`
 - user validated and task closed: `Done`
 
-Use `set_task_board_status` for current-chat execution. Use `run_with_runner`
-with `selection: "task"` for isolated execution; it moves the card to
-`In Progress` before execution and `Testing` after a successful runner exit.
+Use `start_task_execution` and `finish_task_execution` for current-chat
+execution. Use `run_with_runner` for isolated execution; it moves every selected
+task card to `In Progress` before execution and `Testing` after a successful
+runner exit.
 Use `run_parallel` for parallel isolated execution; it moves each task card to
 `In Progress` when that worker starts and `Testing` when that worker exits
 successfully.
+Use `set_task_status` with `status: "implemented"` when delivered work still
+needs user validation; it moves the Project item to `Testing` before recording
+the local status.
 Use `set_task_status` with `status: "done"` and `userValidated: true` after
-documentation and user validation; it updates the GitHub card closeout section,
+documentation and user validation; it updates the GitHub issue closeout section,
 records any PR URLs supplied through `prHandoff.pullRequests`, and moves the
 Project item to `Done`.
 
