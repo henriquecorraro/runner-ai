@@ -128,17 +128,18 @@ The 'projectV2' field requires one of the following scopes: ['read:project']
 
 ---
 
-### `FORBIDDEN` — `AddProjectV2DraftIssue`
+### `FORBIDDEN` — `addProjectV2ItemById` or issue creation
 
 ```
-does not have the correct permissions to execute `AddProjectV2DraftIssue`
+does not have the correct permissions to execute `addProjectV2ItemById`
 ```
 
-**Causa:** O usuário autenticado não tem permissão de escrita no GitHub Project da organização.
+**Causa:** O usuário autenticado não tem permissão de escrita no GitHub Project da organização ou permissão para criar issues no repositório.
 
 **Solução:**
 1. Abra `https://github.com/orgs/<org>/projects/<number>/settings`
 2. Em **Manage access**, adicione o usuário com role **Write** ou **Admin**
+3. Confirme que o usuário também pode criar issues nos repositórios vinculados
 
 ---
 

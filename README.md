@@ -91,9 +91,9 @@ npm run mcp
 The MCP tools are designed around this rule:
 
 - ecosystem creation goes through `create_ecosystem`, which requires either a GitHub Project URL or explicit confirmation to create without one
-- `create_task` creates the GitHub draft Project card in `Todo` when the ecosystem has `githubProject`
-- current-chat task execution uses `set_task_board_status` for `In Progress` and `Testing`
-- validated closure asks for PR handoff intent, then uses `set_task_status(status="done", userValidated=true)` to update the card closeout and move it to `Done`
+- `create_task` uses all-or-fail GitHub sync when the ecosystem has `githubProject`: it creates GitHub issues in every linked repository, adds the primary issue to the Project in `Todo`, assigns every issue to the authenticated user, and only then records the local task
+- current-chat task execution uses `start_task_execution` before implementation and `finish_task_execution` after implementation
+- validated closure asks for PR handoff intent, then uses `set_task_status(status="done", userValidated=true)` to update the issue closeout and move the Project item to `Done`
 - current chat execution is the default, because it reuses the existing brainstorm context
 - contextual phrases like "as tasks" or "pode fazer" refer first to tasks discussed in the current chat
 - the isolated runner is used only when the user explicitly asks for it or confirms it for a large scope/open-task batch
