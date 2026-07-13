@@ -1,0 +1,38 @@
+{
+  "ecosystem": "ll-ds",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1781440390600-j23kex",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "audit-page-title",
+    "label": "Audit PageTitle for DS migration eligibility"
+  },
+  "tasks": [
+    {
+      "id": "audit-page-title",
+      "title": "Audit PageTitle for DS migration eligibility",
+      "scope": "ds-migration-audit",
+      "repositories": [
+        "platform-front",
+        "design-system"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/ll-ds/sdd/tasks/16-audit-page-title.md"
+    }
+  ],
+  "startedAt": "2026-06-14T12:33:12.104752+00:00",
+  "finishedAt": "2026-06-14T12:33:59.302311+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/ll-ds/runs/kiro-1781440390600-j23kex/16-audit-page-title/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/ll-ds/runs/kiro-1781440390600-j23kex/16-audit-page-title/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/ll-ds/runs/kiro-1781440390600-j23kex/16-audit-page-title/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/ll-ds/runs/kiro-1781440390600-j23kex/16-audit-page-title/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/ll-ds/runs/kiro-1781440390600-j23kex/16-audit-page-title/tasks"
+  }
+}

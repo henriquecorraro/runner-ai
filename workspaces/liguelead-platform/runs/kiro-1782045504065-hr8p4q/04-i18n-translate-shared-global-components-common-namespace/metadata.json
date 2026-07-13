@@ -1,0 +1,37 @@
+{
+  "ecosystem": "liguelead-platform",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1782045504065-hr8p4q",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "i18n-translate-shared-global-components-common-namespace",
+    "label": "i18n: Translate shared global components (common namespace)"
+  },
+  "tasks": [
+    {
+      "id": "i18n-translate-shared-global-components-common-namespace",
+      "title": "i18n: Translate shared global components (common namespace)",
+      "scope": "i18n",
+      "repositories": [
+        "platform-front"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/sdd/tasks/142-i18n-translate-shared-global-components-common-namespace.md"
+    }
+  ],
+  "startedAt": "2026-06-21T12:39:41.331673+00:00",
+  "finishedAt": "2026-06-21T12:43:52.098132+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/04-i18n-translate-shared-global-components-common-namespace/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/04-i18n-translate-shared-global-components-common-namespace/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/04-i18n-translate-shared-global-components-common-namespace/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/04-i18n-translate-shared-global-components-common-namespace/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/04-i18n-translate-shared-global-components-common-namespace/tasks"
+  }
+}

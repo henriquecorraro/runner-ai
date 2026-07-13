@@ -1,0 +1,32 @@
+{
+  "ecosystemRunId": "kiro-1781449242075-ri0igp",
+  "mode": "centralized-ecosystem",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "batch": {
+    "id": "move-page-dialogs-to-dialogs-folder",
+    "label": "Move remaining page-level dialogs to components/Dialogs folder"
+  },
+  "tasks": [
+    {
+      "id": "move-page-dialogs-to-dialogs-folder",
+      "scope": "ds-usemodal-refactor",
+      "repositories": [
+        "platform-front"
+      ],
+      "file": "35-move-page-dialogs-to-dialogs-folder.md"
+    }
+  ],
+  "status": "success",
+  "exitCode": 0,
+  "durationMs": 213587,
+  "failureReason": null,
+  "files": {
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/ll-ds/runs/kiro-1781449242075-ri0igp/01-move-page-dialogs-to-dialogs-folder/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/ll-ds/runs/kiro-1781449242075-ri0igp/01-move-page-dialogs-to-dialogs-folder/kiro.log",
+    "metadata": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/ll-ds/runs/kiro-1781449242075-ri0igp/01-move-page-dialogs-to-dialogs-folder/metadata.json"
+  }
+}

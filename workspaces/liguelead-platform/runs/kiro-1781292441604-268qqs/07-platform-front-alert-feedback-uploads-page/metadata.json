@@ -1,0 +1,37 @@
+{
+  "ecosystem": "liguelead-platform",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1781292441604-268qqs",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "platform-front-alert-feedback-uploads-page",
+    "label": "Add alert feedback to Uploads page"
+  },
+  "tasks": [
+    {
+      "id": "platform-front-alert-feedback-uploads-page",
+      "title": "Add alert feedback to Uploads page",
+      "scope": "platform-front-alert-feedback",
+      "repositories": [
+        "platform-front"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/sdd/tasks/82-platform-front-alert-feedback-uploads-page.md"
+    }
+  ],
+  "startedAt": "2026-06-12T19:27:23.083975+00:00",
+  "finishedAt": "2026-06-12T19:30:13.590522+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781292441604-268qqs/07-platform-front-alert-feedback-uploads-page/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781292441604-268qqs/07-platform-front-alert-feedback-uploads-page/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781292441604-268qqs/07-platform-front-alert-feedback-uploads-page/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781292441604-268qqs/07-platform-front-alert-feedback-uploads-page/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781292441604-268qqs/07-platform-front-alert-feedback-uploads-page/tasks"
+  }
+}

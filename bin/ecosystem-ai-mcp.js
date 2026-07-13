@@ -6,8 +6,8 @@ const path = require('node:path');
 const readline = require('node:readline');
 
 const { ensureString, ensureStringArray } = require('../lib/utils');
-const { listEcosystems, getEcosystem, ROOT } = require('../lib/ecosystems');
-const { createEcosystem } = require('../lib/ecosystem-create');
+const { listWorkspaces, getWorkspace, ROOT } = require('../lib/workspaces');
+const { createWorkspace } = require('../lib/workspace-create');
 const {
   VALID_TASK_STATUSES,
   listTasks,
@@ -56,28 +56,35 @@ function formatActivity(result) {
   return { content: [{ type: 'text', text: lines.join('\n') }] };
 }
 
+/**
+ * Resolve workspace name from args, accepting both "workspace" and "ws" as parameter names.
+ */
+function resolveWsArg(args) {
+  return args.workspace || args.ws;
+}
+
 // --- Tool definitions ---
 
 const tools = [
   {
     name: 'get_operating_context',
-    description: 'Return the ecosystem-ai-runner operating rules. Use this before planning or executing ecosystem tasks.',
-    inputSchema: { type: 'object', properties: { ecosystem: { type: 'string', description: 'Optional ecosystem name.' } } },
+    description: 'Return the workspace-ai-runner operating rules. Use this before planning or executing workspace tasks.',
+    inputSchema: { type: 'object', properties: { workspace: { type: 'string', description: 'Optional workspace name.' } } },
   },
   {
-    name: 'list_ecosystems',
-    description: 'List configured ecosystems and their repositories.',
+    name: 'list_workspaces',
+    description: 'List configured workspaces and their repositories.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'create_ecosystem',
-    description: 'Create a centralized ecosystem directory deterministically. If githubProject.url is not known, ask the user for it before calling this tool, unless the user explicitly says no Project is needed; in that case pass skipGithubProject: true.',
+    name: 'create_workspace',
+    description: 'Create a centralized workspace directory deterministically. If githubProject.url is not known, ask the user for it before calling this tool, unless the user explicitly says no Project is needed; in that case pass skipGithubProject: true.',
     inputSchema: {
       type: 'object',
       required: ['name', 'repositories'],
       properties: {
-        name: { type: 'string', description: 'Human-readable ecosystem name.' },
-        directoryName: { type: 'string', description: 'Optional ecosystem directory slug. Defaults to a slug from name.' },
+        name: { type: 'string', description: 'Human-readable workspace name.' },
+        directoryName: { type: 'string', description: 'Optional workspace directory slug. Defaults to a slug from name.' },
         githubProject: {
           type: 'object',
           properties: {
@@ -86,7 +93,7 @@ const tools = [
           required: ['url'],
         },
         githubProjectUrl: { type: 'string', description: 'Legacy shorthand for githubProject.url.' },
-        skipGithubProject: { type: 'boolean', description: 'Set true only after the user explicitly confirms this ecosystem does not need a GitHub Project.' },
+        skipGithubProject: { type: 'boolean', description: 'Set true only after the user explicitly confirms this workspace does not need a GitHub Project.' },
         repositories: {
           type: 'array',
           items: {
@@ -124,33 +131,33 @@ const tools = [
   },
   {
     name: 'list_tasks',
-    description: 'List centralized tasks for one ecosystem, optionally filtered by status or scope.',
+    description: 'List centralized tasks for one workspace, optionally filtered by status or scope.',
     inputSchema: {
-      type: 'object', required: ['ecosystem'],
-      properties: { ecosystem: { type: 'string' }, status: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] }, scope: { type: 'string' } },
+      type: 'object', required: ['workspace'],
+      properties: { workspace: { type: 'string' }, status: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] }, scope: { type: 'string' } },
     },
   },
   {
     name: 'get_task',
     description: 'Load one task for execution in the current chat/agent.',
-    inputSchema: { type: 'object', required: ['ecosystem', 'task'], properties: { ecosystem: { type: 'string' }, task: { type: 'string', description: 'Task id, filename, or unique fragment.' } } },
+    inputSchema: { type: 'object', required: ['workspace', 'task'], properties: { workspace: { type: 'string' }, task: { type: 'string', description: 'Task id, filename, or unique fragment.' } } },
   },
   {
     name: 'get_active_tasks',
     description: 'Return task ids remembered as active in this MCP session.',
-    inputSchema: { type: 'object', required: ['ecosystem'], properties: { ecosystem: { type: 'string' } } },
+    inputSchema: { type: 'object', required: ['workspace'], properties: { workspace: { type: 'string' } } },
   },
   {
     name: 'remember_active_tasks',
     description: 'Remember task ids from the current conversation for contextual references.',
-    inputSchema: { type: 'object', required: ['ecosystem', 'tasks'], properties: { ecosystem: { type: 'string' }, tasks: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' } } },
+    inputSchema: { type: 'object', required: ['workspace', 'tasks'], properties: { workspace: { type: 'string' }, tasks: { type: 'array', items: { type: 'string' } }, reason: { type: 'string' } } },
   },
   {
     name: 'create_task',
     description: 'Create a centralized task file. Deterministic GitHub sync is all-or-fail: when githubProject is configured, preflight every linked repository, create GitHub issues in all linked repositories, assign every issue to the authenticated user, add the primary issue to the Project, and move it to Todo before recording the local task. Titles and body must be in English. Body must be terse machine-readable specs for AI agent execution: declarative, structured, zero prose. Follow taskWritingRules from get_operating_context.',
     inputSchema: {
-      type: 'object', required: ['ecosystem', 'title', 'repositories', 'body'],
-      properties: { ecosystem: { type: 'string' }, id: { type: 'string' }, title: { type: 'string' }, scope: { type: 'string' }, repositories: { type: 'array', items: { type: 'string' } }, validation: { type: 'array', items: { type: 'string' } }, docsTargets: { type: 'array', items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'string' } }, body: { type: 'string' } },
+      type: 'object', required: ['workspace', 'title', 'repositories', 'body'],
+      properties: { workspace: { type: 'string' }, id: { type: 'string' }, title: { type: 'string' }, scope: { type: 'string' }, repositories: { type: 'array', items: { type: 'string' } }, validation: { type: 'array', items: { type: 'string' } }, docsTargets: { type: 'array', items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'string' } }, body: { type: 'string' } },
     },
   },
   {
@@ -158,9 +165,9 @@ const tools = [
     description: 'Update a task status. Setting implemented moves the GitHub Project item to Testing before recording the local status. Requires userValidated: true for done; done updates the GitHub issue closeout section and moves the Project item to Done.',
     inputSchema: {
       type: 'object',
-      required: ['ecosystem', 'task', 'status'],
+      required: ['workspace', 'task', 'status'],
       properties: {
-        ecosystem: { type: 'string' },
+        workspace: { type: 'string' },
         task: { type: 'string' },
         status: { type: 'string', enum: [...VALID_TASK_STATUSES] },
         userValidated: { type: 'boolean' },
@@ -207,9 +214,9 @@ const tools = [
     description: 'Move one task GitHub Project card to Todo, In Progress, Testing, or Done. Use this for current-chat execution lifecycle when not using run_with_runner.',
     inputSchema: {
       type: 'object',
-      required: ['ecosystem', 'task', 'status'],
+      required: ['workspace', 'task', 'status'],
       properties: {
-        ecosystem: { type: 'string' },
+        workspace: { type: 'string' },
         task: { type: 'string', description: 'Task id, filename, or unique fragment.' },
         status: { type: 'string', enum: ['todo', 'in-progress', 'testing', 'done'] },
       },
@@ -220,9 +227,9 @@ const tools = [
     description: 'Deterministically start current-chat execution for one task by moving its GitHub Project item to In Progress before any implementation work.',
     inputSchema: {
       type: 'object',
-      required: ['ecosystem', 'task'],
+      required: ['workspace', 'task'],
       properties: {
-        ecosystem: { type: 'string' },
+        workspace: { type: 'string' },
         task: { type: 'string', description: 'Task id, filename, or unique fragment.' },
       },
     },
@@ -232,30 +239,30 @@ const tools = [
     description: 'Deterministically finish current-chat implementation for one task by moving its GitHub Project item to Testing after implementation work is complete.',
     inputSchema: {
       type: 'object',
-      required: ['ecosystem', 'task'],
+      required: ['workspace', 'task'],
       properties: {
-        ecosystem: { type: 'string' },
+        workspace: { type: 'string' },
         task: { type: 'string', description: 'Task id, filename, or unique fragment.' },
       },
     },
   },
   {
     name: 'run_with_runner',
-    description: 'Run the isolated ecosystem runner. Use only after explicit user choice; dryRun defaults to true. Non-dry-run execution moves every selected task to In Progress before execution and to Testing after successful execution.',
+    description: 'Run the isolated workspace runner. Use only after explicit user choice; dryRun defaults to true. Non-dry-run execution moves every selected task to In Progress before execution and to Testing after successful execution.',
     inputSchema: {
-      type: 'object', required: ['ecosystem', 'selection', 'userConfirmedRunner'],
-      properties: { ecosystem: { type: 'string' }, selection: { type: 'string', enum: ['task', 'scope', 'feature', 'open-tasks', 'open-scopes'] }, value: { type: 'string' }, agent: { type: 'string' }, dryRun: { type: 'boolean' }, userConfirmedRunner: { type: 'boolean' } },
+      type: 'object', required: ['workspace', 'selection', 'userConfirmedRunner'],
+      properties: { workspace: { type: 'string' }, selection: { type: 'string', enum: ['task', 'scope', 'feature', 'open-tasks', 'open-scopes'] }, value: { type: 'string' }, agent: { type: 'string' }, dryRun: { type: 'boolean' }, userConfirmedRunner: { type: 'boolean' } },
     },
   },
   {
     name: 'run_parallel',
-    description: `Launch ecosystem tasks in parallel (up to ${MAX_CONCURRENCY} physical cores). Each task runs in its own process/core, moves its GitHub Project card to In Progress when the worker starts, and moves it to Testing after successful completion. Returns a runId to monitor progress.`,
+    description: `Launch workspace tasks in parallel (up to ${MAX_CONCURRENCY} physical cores). Each task runs in its own process/core, moves its GitHub Project card to In Progress when the worker starts, and moves it to Testing after successful completion. Returns a runId to monitor progress.`,
     inputSchema: {
-      type: 'object', required: ['ecosystem', 'taskIds', 'userConfirmedRunner'],
+      type: 'object', required: ['workspace', 'taskIds', 'userConfirmedRunner'],
       properties: {
-        ecosystem: { type: 'string' },
+        workspace: { type: 'string' },
         taskIds: { type: 'array', items: { type: 'string' }, description: 'Task IDs to execute in parallel.' },
-        agent: { type: 'string', description: 'Agent name (default: ecosystem default).' },
+        agent: { type: 'string', description: 'Agent name (default: workspace default).' },
         concurrency: { type: 'number', description: `Max parallel workers. Default: ${MAX_CONCURRENCY} (physical cores).` },
         userConfirmedRunner: { type: 'boolean' },
       },
@@ -279,11 +286,11 @@ const tools = [
   },
   {
     name: 'run_kiro_parallel',
-    description: `Launch ecosystem tasks in parallel using kiro-cli agents (up to ${MAX_CONCURRENCY} cores). Each task runs in its own kiro-cli process. Use when user asks to run tasks with kiro runner. Returns a runId to monitor with parallel_status.`,
+    description: `Launch workspace tasks in parallel using kiro-cli agents (up to ${MAX_CONCURRENCY} cores). Each task runs in its own kiro-cli process. Use when user asks to run tasks with kiro runner. Returns a runId to monitor with parallel_status.`,
     inputSchema: {
-      type: 'object', required: ['ecosystem', 'userConfirmedRunner'],
+      type: 'object', required: ['workspace', 'userConfirmedRunner'],
       properties: {
-        ecosystem: { type: 'string' },
+        workspace: { type: 'string' },
         taskIds: { type: 'array', items: { type: 'string' }, description: 'Task IDs to execute. If omitted with openTasks=true, runs all actionable tasks.' },
         scope: { type: 'string', description: 'Run all actionable tasks in this scope.' },
         openTasks: { type: 'boolean', description: 'Run all open/needs-rework tasks.' },
@@ -296,11 +303,11 @@ const tools = [
   },
   {
     name: 'get_my_activity',
-    description: 'Fetch the authenticated GitHub user\'s activity in an ecosystem\'s GitHub Project, filtered by date range. Use when the user asks what they did on a specific day or period.',
+    description: 'Fetch the authenticated GitHub user\'s activity in a workspace\'s GitHub Project, filtered by date range. Use when the user asks what they did on a specific day or period.',
     inputSchema: {
-      type: 'object', required: ['ecosystem'],
+      type: 'object', required: ['workspace'],
       properties: {
-        ecosystem: { type: 'string' },
+        workspace: { type: 'string' },
         since: { type: 'string', description: 'ISO date or date-time. Only items updated on or after this date.' },
         until: { type: 'string', description: 'ISO date or date-time. Only items updated on or before this date.' },
       },
@@ -308,11 +315,11 @@ const tools = [
   },
   {
     name: 'create_github_project',
-    description: 'Create a GitHub Project v2 for an ecosystem that does not have one. Creates the project with a Status single-select field (Todo, In Progress, Testing, Done) and updates ecosystem.config.json.',
+    description: 'Create a GitHub Project v2 for a workspace that does not have one. Creates the project with a Status single-select field (Todo, In Progress, Testing, Done) and updates workspace.config.json.',
     inputSchema: {
-      type: 'object', required: ['ecosystem', 'title'],
+      type: 'object', required: ['workspace', 'title'],
       properties: {
-        ecosystem: { type: 'string' },
+        workspace: { type: 'string' },
         title: { type: 'string', description: 'Title for the new GitHub Project.' },
       },
     },
@@ -322,7 +329,8 @@ const tools = [
 // --- Tool handlers ---
 
 function getOperatingContext(args) {
-  const ecosystem = args.ecosystem ? getEcosystem(args.ecosystem) : null;
+  const wsName = resolveWsArg(args);
+  const ws = wsName ? getWorkspace(wsName) : null;
   const sharedSkillsDir = path.join(ROOT, 'skills');
   const sharedSkills = fs.existsSync(sharedSkillsDir)
     ? fs.readdirSync(sharedSkillsDir, { withFileTypes: true })
@@ -336,10 +344,10 @@ function getOperatingContext(args) {
     runnerRequiresExplicitUserChoice: true,
     contextualTaskReferencesUseCurrentConversationFirst: true,
     guidance: [
-      'ENGLISH FIRST for ecosystem SDD artifacts.',
-      'Use create_ecosystem for deterministic ecosystem creation.',
-      'Before create_ecosystem, ask for a GitHub Project URL unless the user explicitly confirms no Project is needed; then pass skipGithubProject: true.',
-      'When creating tasks in an ecosystem with githubProject, create_task is all-or-fail: it preflights every linked repository, creates GitHub issues in every linked repository, assigns every issue to the authenticated user, adds the primary issue to the Project in Todo, and only then records the local task.',
+      'ENGLISH FIRST for workspace SDD artifacts.',
+      'Use create_workspace for deterministic workspace creation.',
+      'Before create_workspace, ask for a GitHub Project URL unless the user explicitly confirms no Project is needed; then pass skipGithubProject: true.',
+      'When creating tasks in a workspace with githubProject, create_task is all-or-fail: it preflights every linked repository, creates GitHub issues in every linked repository, assigns every issue to the authenticated user, adds the primary issue to the Project in Todo, and only then records the local task.',
       'For current-chat execution, use start_task_execution before implementation and finish_task_execution after implementation; these are required lifecycle gates.',
       'For run_with_runner and run_parallel, every selected task card moves to In Progress before execution and Testing when that task succeeds.',
       'When the user validates and asks to document/close a task, ask whether to skip PR handoff, use the current branch, or create a new branch; then use set_task_status(status="done", userValidated=true) with prHandoff, closeoutSummary, and PR URLs so the GitHub issue is updated and the Project item is moved to Done.',
@@ -366,8 +374,8 @@ function getOperatingContext(args) {
       'Use imperative mood: "must", "do", "return" — never "should", "could", "might".',
     ],
     sharedSkills,
-    ecosystem,
-    activeTasks: ecosystem ? getActiveTasks(ecosystem.directoryName) : [],
+    workspace: ws,
+    activeTasks: ws ? getActiveTasks(ws.directoryName) : [],
   };
 }
 
@@ -377,10 +385,10 @@ const kiroRuns = new Map();
 
 function launchKiroParallel(args) {
   if (args.userConfirmedRunner !== true) throw new Error('Kiro runner requires userConfirmedRunner: true.');
-  const eco = getEcosystem(args.ecosystem);
+  const ws = getWorkspace(resolveWsArg(args));
 
   const runId = `kiro-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const pyArgs = ['-m', 'runners.kiro', '--config', eco.configPath, '--run-id', runId, '--no-tui'];
+  const pyArgs = ['-m', 'runners.kiro', '--config', ws.configPath, '--run-id', runId, '--no-tui'];
 
   if (args.taskIds && args.taskIds.length > 0) {
     for (const id of ensureStringArray(args.taskIds, 'taskIds', true)) {
@@ -400,7 +408,7 @@ function launchKiroParallel(args) {
   if (args.model) env.KIRO_MODEL = args.model;
   if (args.effort) env.KIRO_EFFORT = args.effort;
 
-  const logsDir = path.join(ROOT, 'ecosystems', eco.directoryName, 'runs', runId);
+  const logsDir = path.join(ROOT, 'workspaces', ws.directoryName, 'runs', runId);
   fs.mkdirSync(logsDir, { recursive: true });
   const orchestratorLog = path.join(logsDir, 'orchestrator.log');
   const logStream = fs.createWriteStream(orchestratorLog, { flags: 'w' });
@@ -408,7 +416,7 @@ function launchKiroParallel(args) {
   const { spawn } = require('node:child_process');
   const child = spawn('python3', pyArgs, { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
 
-  const state = { runId, ecosystem: eco.directoryName, pid: child.pid, status: 'running', startedAt: new Date().toISOString(), finishedAt: null, exitCode: null, lastLines: [], logsDir };
+  const state = { runId, workspace: ws.directoryName, pid: child.pid, status: 'running', startedAt: new Date().toISOString(), finishedAt: null, exitCode: null, lastLines: [], logsDir };
   kiroRuns.set(runId, state);
 
   child.stdout.on('data', (chunk) => {
@@ -431,54 +439,56 @@ function launchKiroParallel(args) {
     state.finishedAt = new Date().toISOString();
   });
 
-  return { runId, ecosystem: eco.directoryName, pid: child.pid, logsDir, message: `Kiro runner started. Monitor with parallel_status(runId="${runId}") or check ${logsDir}` };
+  return { runId, workspace: ws.directoryName, pid: child.pid, logsDir, message: `Kiro runner started. Monitor with parallel_status(runId="${runId}") or check ${logsDir}` };
 }
 
-// --- Tool handlers ---
+// --- Tool call dispatch ---
 
 function callTool(name, args = {}) {
+  // Normalize: accept both "workspace" and "ws" in args for all tools
+  if (args.ws && !args.workspace) args.workspace = args.ws;
+
   switch (name) {
     case 'get_operating_context': return getOperatingContext(args);
-    case 'list_ecosystems': return { ecosystems: listEcosystems() };
-    case 'create_ecosystem': return createEcosystem(args);
+    case 'list_workspaces': return { workspaces: listWorkspaces() };
+    case 'create_workspace': return createWorkspace(args);
     case 'list_tasks': {
-      const eco = getEcosystem(args.ecosystem);
-      return { ecosystem: eco.directoryName, tasks: listTasks(eco, args).map(summarizeTask) };
+      const ws = getWorkspace(resolveWsArg(args));
+      return { workspace: ws.directoryName, tasks: listTasks(ws, args).map(summarizeTask) };
     }
     case 'get_task': {
-      const eco = getEcosystem(args.ecosystem);
-      const task = resolveTask(eco, args.task);
-      rememberActiveTasks(eco.directoryName, [task.id], 'loaded-by-mcp');
-      return { ecosystem: eco.directoryName, task };
+      const ws = getWorkspace(resolveWsArg(args));
+      const task = resolveTask(ws, args.task);
+      rememberActiveTasks(ws.directoryName, [task.id], 'loaded-by-mcp');
+      return { workspace: ws.directoryName, task };
     }
     case 'get_active_tasks': {
-      const eco = getEcosystem(args.ecosystem);
-      return { ecosystem: eco.directoryName, activeTasks: getActiveTasks(eco.directoryName) };
+      const ws = getWorkspace(resolveWsArg(args));
+      return { workspace: ws.directoryName, activeTasks: getActiveTasks(ws.directoryName) };
     }
     case 'remember_active_tasks': {
-      const eco = getEcosystem(args.ecosystem);
+      const ws = getWorkspace(resolveWsArg(args));
       const taskIds = ensureStringArray(args.tasks, 'tasks', true);
-      const resolved = taskIds.map((id) => resolveTask(eco, id));
-      rememberActiveTasks(eco.directoryName, resolved.map((t) => t.id), args.reason || 'remembered-by-agent');
-      return { ecosystem: eco.directoryName, activeTasks: getActiveTasks(eco.directoryName) };
+      const resolved = taskIds.map((id) => resolveTask(ws, id));
+      rememberActiveTasks(ws.directoryName, resolved.map((t) => t.id), args.reason || 'remembered-by-agent');
+      return { workspace: ws.directoryName, activeTasks: getActiveTasks(ws.directoryName) };
     }
-    case 'create_task': return createTask(args, getEcosystem);
-    case 'set_task_status': return setTaskStatus(args, getEcosystem);
-    case 'set_task_board_status': return setTaskBoardStatus(args, getEcosystem);
-    case 'start_task_execution': return startTaskExecution(args, getEcosystem);
-    case 'finish_task_execution': return finishTaskExecution(args, getEcosystem);
-    case 'run_with_runner': return runWithRunner(args, getEcosystem);
+    case 'create_task': return createTask(args, getWorkspace);
+    case 'set_task_status': return setTaskStatus(args, getWorkspace);
+    case 'set_task_board_status': return setTaskBoardStatus(args, getWorkspace);
+    case 'start_task_execution': return startTaskExecution(args, getWorkspace);
+    case 'finish_task_execution': return finishTaskExecution(args, getWorkspace);
+    case 'run_with_runner': return runWithRunner(args, getWorkspace);
     case 'run_parallel': {
       if (args.userConfirmedRunner !== true) throw new Error('Parallel execution requires userConfirmedRunner: true.');
-      const eco = getEcosystem(args.ecosystem);
+      const ws = getWorkspace(resolveWsArg(args));
       const taskIds = ensureStringArray(args.taskIds, 'taskIds', true);
-      return launchParallel({ ecosystem: eco, taskIds, agent: args.agent, concurrency: args.concurrency });
+      return launchParallel({ ws, taskIds, agent: args.agent, concurrency: args.concurrency });
     }
     case 'parallel_status': {
       if (kiroRuns.has(args.runId)) {
         const kr = kiroRuns.get(args.runId);
         const result = { ...kr };
-        // Read last lines from orchestrator log
         const logPath = path.join(kr.logsDir, 'orchestrator.log');
         if (fs.existsSync(logPath)) {
           const content = fs.readFileSync(logPath, 'utf8');
@@ -490,20 +500,20 @@ function callTool(name, args = {}) {
     }
     case 'list_parallel_runs': {
       const codexRuns = listParallelRuns();
-      const kiro = [...kiroRuns.values()].map((r) => ({ runId: r.runId, ecosystem: r.ecosystem, type: 'kiro', status: r.status, pid: r.pid, startedAt: r.startedAt }));
+      const kiro = [...kiroRuns.values()].map((r) => ({ runId: r.runId, workspace: r.workspace, type: 'kiro', status: r.status, pid: r.pid, startedAt: r.startedAt }));
       return [...codexRuns.map((r) => ({ ...r, type: 'codex' })), ...kiro];
     }
     case 'run_kiro_parallel': return launchKiroParallel(args);
     case 'get_my_activity': {
-      const eco = getEcosystem(args.ecosystem);
-      if (!eco.githubProject) throw new Error(`Ecosystem "${eco.directoryName}" does not have githubProject configured.`);
-      const result = getMyActivity(eco.githubProject, { since: args.since, until: args.until });
+      const ws = getWorkspace(resolveWsArg(args));
+      if (!ws.githubProject) throw new Error(`Workspace "${ws.directoryName}" does not have githubProject configured.`);
+      const result = getMyActivity(ws.githubProject, { since: args.since, until: args.until });
       return formatActivity(result);
     }
     case 'create_github_project': {
-      const eco = getEcosystem(args.ecosystem);
-      if (eco.githubProject) throw new Error(`Ecosystem "${eco.directoryName}" already has githubProject configured: ${eco.githubProject.url}`);
-      return createGitHubProject({ ecosystem: eco, title: ensureString(args.title, 'title') });
+      const ws = getWorkspace(resolveWsArg(args));
+      if (ws.githubProject) throw new Error(`Workspace "${ws.directoryName}" already has githubProject configured: ${ws.githubProject.url}`);
+      return createGitHubProject({ ws, title: ensureString(args.title, 'title') });
     }
     default: throw new Error(`Unknown tool: ${name}`);
   }
@@ -516,7 +526,7 @@ async function handleMessage(message) {
     return jsonResult(message.id, {
       protocolVersion: '2024-11-05',
       capabilities: { tools: {} },
-      serverInfo: { name: 'ecosystem-ai-runner', version: '0.2.0' },
+      serverInfo: { name: 'workspace-ai-runner', version: '0.3.0' },
     });
   }
   if (message.method === 'notifications/initialized') return null;

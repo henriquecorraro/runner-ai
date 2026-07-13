@@ -1,0 +1,37 @@
+{
+  "ecosystem": "liguelead-platform",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1782305992493-y6c7ss",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "tags-page-display-tag-names-with-border-style-chips-matching-leads-page",
+    "label": "Tags page: display tag names with border-style chips matching leads page"
+  },
+  "tasks": [
+    {
+      "id": "tags-page-display-tag-names-with-border-style-chips-matching-leads-page",
+      "title": "Tags page: display tag names with border-style chips matching leads page",
+      "scope": "tags",
+      "repositories": [
+        "platform-front"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/sdd/tasks/163-tags-page-display-tag-names-with-border-style-chips-matching-leads-page.md"
+    }
+  ],
+  "startedAt": "2026-06-24T12:59:57.036783+00:00",
+  "finishedAt": "2026-06-24T13:01:31.385173+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/05-tags-page-display-tag-names-with-border-style-chips-matching-leads-page/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/05-tags-page-display-tag-names-with-border-style-chips-matching-leads-page/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/05-tags-page-display-tag-names-with-border-style-chips-matching-leads-page/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/05-tags-page-display-tag-names-with-border-style-chips-matching-leads-page/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/05-tags-page-display-tag-names-with-border-style-chips-matching-leads-page/tasks"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "ecosystem": "liguelead-platform",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1782305992493-y6c7ss",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "leads-page-add-delete-soft-delete-iconbutton-per-lead-row",
+    "label": "Leads page: add delete (soft-delete) IconButton per lead row"
+  },
+  "tasks": [
+    {
+      "id": "leads-page-add-delete-soft-delete-iconbutton-per-lead-row",
+      "title": "Leads page: add delete (soft-delete) IconButton per lead row",
+      "scope": "leads",
+      "repositories": [
+        "platform-front",
+        "platform-api"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/sdd/tasks/160-leads-page-add-delete-soft-delete-iconbutton-per-lead-row.md"
+    }
+  ],
+  "startedAt": "2026-06-24T12:59:54.983622+00:00",
+  "finishedAt": "2026-06-24T13:03:00.760423+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/02-leads-page-add-delete-soft-delete-iconbutton-per-lead-row/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/02-leads-page-add-delete-soft-delete-iconbutton-per-lead-row/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/02-leads-page-add-delete-soft-delete-iconbutton-per-lead-row/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/02-leads-page-add-delete-soft-delete-iconbutton-per-lead-row/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/02-leads-page-add-delete-soft-delete-iconbutton-per-lead-row/tasks"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "ecosystemRunId": "kiro-1782045504065-hr8p4q",
+  "mode": "centralized-ecosystem",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "batch": {
+    "id": "i18n-translate-leads-page",
+    "label": "i18n: Translate Leads page"
+  },
+  "tasks": [
+    {
+      "id": "i18n-translate-leads-page",
+      "scope": "i18n",
+      "repositories": [
+        "platform-front"
+      ],
+      "file": "144-i18n-translate-leads-page.md"
+    }
+  ],
+  "status": "success",
+  "exitCode": 0,
+  "durationMs": 214060,
+  "failureReason": null,
+  "files": {
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/06-i18n-translate-leads-page/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/06-i18n-translate-leads-page/kiro.log",
+    "metadata": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/06-i18n-translate-leads-page/metadata.json"
+  }
+}

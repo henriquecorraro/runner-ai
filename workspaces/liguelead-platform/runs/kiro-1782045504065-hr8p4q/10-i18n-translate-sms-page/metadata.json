@@ -1,0 +1,37 @@
+{
+  "ecosystem": "liguelead-platform",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1782045504065-hr8p4q",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "i18n-translate-sms-page",
+    "label": "i18n: Translate SMS page"
+  },
+  "tasks": [
+    {
+      "id": "i18n-translate-sms-page",
+      "title": "i18n: Translate SMS page",
+      "scope": "i18n",
+      "repositories": [
+        "platform-front"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/sdd/tasks/148-i18n-translate-sms-page.md"
+    }
+  ],
+  "startedAt": "2026-06-21T12:43:56.985334+00:00",
+  "finishedAt": "2026-06-21T12:47:53.429899+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/10-i18n-translate-sms-page/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/10-i18n-translate-sms-page/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/10-i18n-translate-sms-page/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/10-i18n-translate-sms-page/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782045504065-hr8p4q/10-i18n-translate-sms-page/tasks"
+  }
+}

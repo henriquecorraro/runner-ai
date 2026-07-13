@@ -1,0 +1,32 @@
+{
+  "ecosystemRunId": "kiro-1781996029903-04mxft",
+  "mode": "centralized-ecosystem",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "batch": {
+    "id": "persist-voice-report-engagement-and-status-analytics",
+    "label": "Persist voice report engagement and status analytics"
+  },
+  "tasks": [
+    {
+      "id": "persist-voice-report-engagement-and-status-analytics",
+      "scope": "broadcast-voice-report-analytics",
+      "repositories": [
+        "platform-api"
+      ],
+      "file": "135-persist-voice-report-engagement-and-status-analytics.md"
+    }
+  ],
+  "status": "success",
+  "exitCode": 0,
+  "durationMs": 862007,
+  "failureReason": null,
+  "files": {
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781996029903-04mxft/01-persist-voice-report-engagement-and-status-analytics/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781996029903-04mxft/01-persist-voice-report-engagement-and-status-analytics/kiro.log",
+    "metadata": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781996029903-04mxft/01-persist-voice-report-engagement-and-status-analytics/metadata.json"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "ecosystem": "liguelead-platform",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1782305992493-y6c7ss",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "schedules-page-replace-info-icon-with-chart-icon-for-completed-schedules",
+    "label": "Schedules page: replace info icon with chart icon for completed schedules"
+  },
+  "tasks": [
+    {
+      "id": "schedules-page-replace-info-icon-with-chart-icon-for-completed-schedules",
+      "title": "Schedules page: replace info icon with chart icon for completed schedules",
+      "scope": "broadcasts",
+      "repositories": [
+        "platform-front"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/sdd/tasks/165-schedules-page-replace-info-icon-with-chart-icon-for-completed-schedules.md"
+    }
+  ],
+  "startedAt": "2026-06-24T12:59:59.113537+00:00",
+  "finishedAt": "2026-06-24T13:01:03.359351+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/07-schedules-page-replace-info-icon-with-chart-icon-for-completed-schedules/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/07-schedules-page-replace-info-icon-with-chart-icon-for-completed-schedules/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/07-schedules-page-replace-info-icon-with-chart-icon-for-completed-schedules/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/07-schedules-page-replace-info-icon-with-chart-icon-for-completed-schedules/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/07-schedules-page-replace-info-icon-with-chart-icon-for-completed-schedules/tasks"
+  }
+}

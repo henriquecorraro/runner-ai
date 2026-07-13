@@ -1,0 +1,32 @@
+{
+  "name": "saude",
+  "historyRoot": "runs",
+  "sddRoot": "sdd",
+  "defaultAgent": "codex",
+  "agents": {
+    "codex": {
+      "type": "codex",
+      "command": "codex",
+      "args": ["exec", "--ephemeral"]
+    },
+    "claude-code": {
+      "type": "claude-code",
+      "command": "claude",
+      "args": ["-p"]
+    }
+  },
+  "repositories": [
+    {
+      "id": "saude",
+      "label": "Saude Clinical Audio Platform",
+      "path": "../../../saude",
+      "docsHints": [
+        "Keep repository-local human docs in docs/ aligned with clinical workflow boundaries, API contracts, OpenAI model usage, and patient-safety guardrails."
+      ],
+      "validation": [
+        "npm run typecheck --workspace backend",
+        "npm run build --workspace frontend"
+      ]
+    }
+  ]
+}

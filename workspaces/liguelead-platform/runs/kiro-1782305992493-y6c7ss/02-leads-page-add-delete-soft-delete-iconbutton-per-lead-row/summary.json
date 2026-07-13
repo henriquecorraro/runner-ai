@@ -1,0 +1,33 @@
+{
+  "ecosystemRunId": "kiro-1782305992493-y6c7ss",
+  "mode": "centralized-ecosystem",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "batch": {
+    "id": "leads-page-add-delete-soft-delete-iconbutton-per-lead-row",
+    "label": "Leads page: add delete (soft-delete) IconButton per lead row"
+  },
+  "tasks": [
+    {
+      "id": "leads-page-add-delete-soft-delete-iconbutton-per-lead-row",
+      "scope": "leads",
+      "repositories": [
+        "platform-front",
+        "platform-api"
+      ],
+      "file": "160-leads-page-add-delete-soft-delete-iconbutton-per-lead-row.md"
+    }
+  ],
+  "status": "success",
+  "exitCode": 0,
+  "durationMs": 185776,
+  "failureReason": null,
+  "files": {
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/02-leads-page-add-delete-soft-delete-iconbutton-per-lead-row/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/02-leads-page-add-delete-soft-delete-iconbutton-per-lead-row/kiro.log",
+    "metadata": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1782305992493-y6c7ss/02-leads-page-add-delete-soft-delete-iconbutton-per-lead-row/metadata.json"
+  }
+}

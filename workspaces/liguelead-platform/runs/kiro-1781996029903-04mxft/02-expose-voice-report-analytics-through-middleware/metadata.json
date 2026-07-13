@@ -1,0 +1,37 @@
+{
+  "ecosystem": "liguelead-platform",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1781996029903-04mxft",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "expose-voice-report-analytics-through-middleware",
+    "label": "Expose voice report analytics through middleware"
+  },
+  "tasks": [
+    {
+      "id": "expose-voice-report-analytics-through-middleware",
+      "title": "Expose voice report analytics through middleware",
+      "scope": "broadcast-voice-report-analytics",
+      "repositories": [
+        "middleware"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/sdd/tasks/136-expose-voice-report-analytics-through-middleware.md"
+    }
+  ],
+  "startedAt": "2026-06-20T23:08:20.290540+00:00",
+  "finishedAt": "2026-06-20T23:13:39.471257+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781996029903-04mxft/02-expose-voice-report-analytics-through-middleware/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781996029903-04mxft/02-expose-voice-report-analytics-through-middleware/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781996029903-04mxft/02-expose-voice-report-analytics-through-middleware/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781996029903-04mxft/02-expose-voice-report-analytics-through-middleware/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781996029903-04mxft/02-expose-voice-report-analytics-through-middleware/tasks"
+  }
+}

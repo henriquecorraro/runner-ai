@@ -1,0 +1,37 @@
+{
+  "ecosystem": "liguelead-platform",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1781617117916-m28zer",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "worker-extract-loops",
+    "label": "Extract worker process-once loops from standalone workers"
+  },
+  "tasks": [
+    {
+      "id": "worker-extract-loops",
+      "title": "Extract worker process-once loops from standalone workers",
+      "scope": "worker-consolidation",
+      "repositories": [
+        "platform-api"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/sdd/tasks/98-worker-extract-loops.md"
+    }
+  ],
+  "startedAt": "2026-06-16T13:38:39.683581+00:00",
+  "finishedAt": "2026-06-16T13:42:30.688534+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781617117916-m28zer/01-worker-extract-loops/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781617117916-m28zer/01-worker-extract-loops/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781617117916-m28zer/01-worker-extract-loops/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781617117916-m28zer/01-worker-extract-loops/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781617117916-m28zer/01-worker-extract-loops/tasks"
+  }
+}

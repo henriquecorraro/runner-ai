@@ -1,0 +1,37 @@
+{
+  "ecosystem": "liguelead-platform",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1783477078748-gx7f3l",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "rcs-agents-frontend-ds-refactor",
+    "label": "RCS Agents: refactor frontend to use Design System components"
+  },
+  "tasks": [
+    {
+      "id": "rcs-agents-frontend-ds-refactor",
+      "title": "RCS Agents: refactor frontend to use Design System components",
+      "scope": "rcs-agents",
+      "repositories": [
+        "platform-front"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/sdd/tasks/202-rcs-agents-frontend-ds-refactor.md"
+    }
+  ],
+  "startedAt": "2026-07-08T02:18:00.749059+00:00",
+  "finishedAt": "2026-07-08T02:22:54.631766+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1783477078748-gx7f3l/01-rcs-agents-frontend-ds-refactor/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1783477078748-gx7f3l/01-rcs-agents-frontend-ds-refactor/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1783477078748-gx7f3l/01-rcs-agents-frontend-ds-refactor/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1783477078748-gx7f3l/01-rcs-agents-frontend-ds-refactor/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1783477078748-gx7f3l/01-rcs-agents-frontend-ds-refactor/tasks"
+  }
+}

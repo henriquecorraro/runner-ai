@@ -1,0 +1,64 @@
+{
+  "name": "liguelead-platform",
+  "historyRoot": "runs",
+  "sddRoot": "sdd",
+  "githubProject": {
+    "title": "platform-v2",
+    "url": "https://github.com/orgs/ligue-lead-tech/projects/6"
+  },
+  "defaultAgent": "codex",
+  "agents": {
+    "codex": {
+      "type": "codex",
+      "command": "codex",
+      "args": ["exec", "--ephemeral"]
+    },
+    "claude-code": {
+      "type": "claude-code",
+      "command": "claude",
+      "args": ["-p"]
+    }
+  },
+  "repositories": [
+    {
+      "id": "platform-api",
+      "label": "Platform API",
+      "path": "../../../platform-api",
+      "docsHints": [
+        "Keep repository-local human docs in docs/human aligned with module boundaries, routes, business rules, and operational behavior."
+      ],
+      "validation": [
+        "npm run typecheck",
+        "npm test",
+        "npm run build"
+      ]
+    },
+    {
+      "id": "middleware",
+      "label": "Middleware API",
+      "path": "../../../middleware",
+      "docsHints": [
+        "Keep repository-local human docs in docs/ updated when route contracts, auth strategies, backend targets, or operational behavior change.",
+        "Regenerate docs/public-api artifacts with npm run docs:openapi whenever route catalogs or Zod schemas change."
+      ],
+      "validation": [
+        "npm run build",
+        "npm test",
+        "npm run docs:openapi"
+      ]
+    },
+    {
+      "id": "platform-front",
+      "label": "Platform Frontend",
+      "path": "../../../platform-front",
+      "docsHints": [
+        "Keep repository-local feature docs in docs/features aligned with routes used by the UI, service payloads, and important UX constraints.",
+        "Prefer expanding human docs feature by feature inside the repository as coverage grows."
+      ],
+      "validation": [
+        "npm run lint",
+        "npm run build"
+      ]
+    }
+  ]
+}

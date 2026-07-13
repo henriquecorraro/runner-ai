@@ -1,0 +1,37 @@
+{
+  "ecosystem": "liguelead-platform",
+  "agent": {
+    "name": "kiro",
+    "type": "kiro",
+    "command": "kiro-cli"
+  },
+  "runId": "kiro-1781617383301-dqqx3p",
+  "status": "success",
+  "mode": "centralized-ecosystem",
+  "batch": {
+    "id": "worker-orchestrator-background",
+    "label": "Background orchestrator: audit-events + auto-recharges + mercadopago + lead-lists"
+  },
+  "tasks": [
+    {
+      "id": "worker-orchestrator-background",
+      "title": "Background orchestrator: audit-events + auto-recharges + mercadopago + lead-lists",
+      "scope": "worker-consolidation",
+      "repositories": [
+        "platform-api"
+      ],
+      "file": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/sdd/tasks/99-worker-orchestrator-background.md"
+    }
+  ],
+  "startedAt": "2026-06-16T13:43:05.723949+00:00",
+  "finishedAt": "2026-06-16T13:45:04.512497+00:00",
+  "exitCode": 0,
+  "failureReason": null,
+  "files": {
+    "prompt": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781617383301-dqqx3p/01-worker-orchestrator-background/prompt.md",
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781617383301-dqqx3p/01-worker-orchestrator-background/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781617383301-dqqx3p/01-worker-orchestrator-background/kiro.log",
+    "summary": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781617383301-dqqx3p/01-worker-orchestrator-background/summary.json",
+    "tasks": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/kiro-1781617383301-dqqx3p/01-worker-orchestrator-background/tasks"
+  }
+}

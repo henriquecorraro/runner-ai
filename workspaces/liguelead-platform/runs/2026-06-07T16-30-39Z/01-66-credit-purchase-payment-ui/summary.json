@@ -1,0 +1,40 @@
+{
+  "ecosystemRunId": "2026-06-07T16-30-39Z",
+  "mode": "centralized-ecosystem",
+  "agent": {
+    "name": "codex",
+    "type": "codex",
+    "command": "codex"
+  },
+  "batch": {
+    "id": "66-credit-purchase-payment-ui",
+    "label": "Build credit purchase payment UI and card registration flow"
+  },
+  "tasks": [
+    {
+      "id": "66-credit-purchase-payment-ui",
+      "scope": "credit-card-payments",
+      "repositories": [
+        "platform-front",
+        "middleware"
+      ],
+      "file": "66-credit-purchase-payment-ui.md"
+    }
+  ],
+  "status": "failed",
+  "exitCode": 1,
+  "durationMs": 2618,
+  "tokens": {
+    "totalTokens": null,
+    "inputTokens": null,
+    "outputTokens": null,
+    "cachedTokens": null,
+    "reasoningTokens": null
+  },
+  "failureReason": "codex failed for batch \"66-credit-purchase-payment-ui\" with exit code 1.",
+  "files": {
+    "output": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/2026-06-07T16-30-39Z/01-66-credit-purchase-payment-ui/output.md",
+    "log": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/2026-06-07T16-30-39Z/01-66-credit-purchase-payment-ui/codex.log",
+    "metadata": "/home/rick/projetos/ecosystem-ai-runner/ecosystems/liguelead-platform/runs/2026-06-07T16-30-39Z/01-66-credit-purchase-payment-ui/metadata.json"
+  }
+}
