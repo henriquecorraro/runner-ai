@@ -5,7 +5,7 @@ import json
 import subprocess
 from typing import Optional
 
-from .models import EcosystemConfig, GitHubProject, TaskDef
+from .models import WorkspaceConfig, GitHubProject, TaskDef
 
 BOARD_STATUS_MAP = {
     "in-progress": "In Progress",
@@ -15,7 +15,7 @@ BOARD_STATUS_MAP = {
 }
 
 
-def move_task_card(eco: EcosystemConfig, task: TaskDef, status: str) -> None:
+def move_task_card(eco: WorkspaceConfig, task: TaskDef, status: str) -> None:
     """Move a task's project card to the given status. Fails silently."""
     if not eco.github_project or not task.github_project_item_id:
         return

@@ -1,6 +1,6 @@
 # Example SDD Tasks
 
-This folder is the centralized task queue for an ecosystem.
+This folder is the centralized task queue for an workspace.
 
 Keep the parent `sdd/README.md` task status ordered from oldest to newest. When a task is created later, append it to the end of `## Task Status` so the newest work remains at the bottom.
 

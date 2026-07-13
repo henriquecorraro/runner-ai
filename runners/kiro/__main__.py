@@ -6,14 +6,14 @@ import asyncio
 import os
 import sys
 
-from .config import ACTIONABLE_STATUSES, load_ecosystem, load_tasks
+from .config import ACTIONABLE_STATUSES, load_workspace, load_tasks
 from .monitor import Monitor
 from .runner import execute
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Kiro Parallel Runner for Ecosystem AI")
-    p.add_argument("--config", required=True, help="Path to ecosystem.config.json")
+    p = argparse.ArgumentParser(description="Kiro Parallel Runner for Workspace AI")
+    p.add_argument("--config", required=True, help="Path to workspace.config.json")
     p.add_argument("--task", action="append", dest="tasks", default=[], help="Task ID(s) to run (repeatable)")
     p.add_argument("--scope", help="Run all actionable tasks in this scope")
     p.add_argument("--open-tasks", action="store_true", help="Run all open/needs-rework tasks")
@@ -64,10 +64,10 @@ def resolve_tasks(args, eco):
 
 def main():
     args = parse_args()
-    eco = load_ecosystem(args.config)
+    eco = load_workspace(args.config)
     tasks = resolve_tasks(args, eco)
 
-    print(f"[kiro-runner] Ecosystem: {eco.name}")
+    print(f"[kiro-runner] Workspace: {eco.name}")
     print(f"[kiro-runner] Tasks: {len(tasks)} | Concurrency: {args.concurrency}")
     for t in tasks:
         deps = f" (depends: {', '.join(t.depends_on)})" if t.depends_on else ""

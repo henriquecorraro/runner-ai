@@ -1,6 +1,6 @@
 ---
 name: codex-direct-mode
-description: "Response-style skill for concise, direct, low-fluff answers. Use when the user wants shorter outputs, fewer tokens, minimal explanation, straight-to-the-point communication, or explicit avoidance of verbose and prolix responses. Compatible with domain skills such as liguelead-platform-ecosystem because it controls style, not execution workflow."
+description: "Response-style skill for concise, direct, low-fluff answers. Use when the user wants shorter outputs, fewer tokens, minimal explanation, straight-to-the-point communication, or explicit avoidance of verbose and prolix responses. Compatible with domain skills such as liguelead-platform-workspace because it controls style, not execution workflow."
 ---
 
 # Codex Direct Mode

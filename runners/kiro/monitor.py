@@ -29,7 +29,7 @@ STATUS_ICON = {
 
 
 def build_table(run: Run) -> Table:
-    table = Table(title=f"Kiro Runner — {run.ecosystem} — {run.id}", expand=True)
+    table = Table(title=f"Kiro Runner — {run.workspace} — {run.id}", expand=True)
     table.add_column("Task", style="bold", ratio=3)
     table.add_column("Status", justify="center", ratio=1)
     table.add_column("PID", justify="right", ratio=1)

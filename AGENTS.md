@@ -1,14 +1,14 @@
-# Ecosystem AI Runner Agent Guide
+# Workspace AI Runner Agent Guide
 
-This repository is a control plane for ecosystem work, not a single application repository.
+This repository is a control plane for workspace work, not a single application repository.
 
-When a user asks to plan, create, execute, or close ecosystem tasks:
+When a user asks to plan, create, execute, or close workspace tasks:
 
-- Prefer the MCP tools from `bin/ecosystem-ai-mcp.js` when available.
-- ENGLISH FIRST: write all ecosystem SDD content in English, including task files,
+- Prefer the MCP tools from `bin/workspace-ai-mcp.js` when available.
+- ENGLISH FIRST: write all workspace SDD content in English, including task files,
   task titles, task body sections, textual frontmatter values, `Task Status`
   entries, run prompts, and SDD README updates. The user may speak Portuguese,
-  but centralized ecosystem SDD artifacts must stay English unless the user
+  but centralized workspace SDD artifacts must stay English unless the user
   explicitly asks for a quoted user-facing string in another language.
 - Use the current chat/agent as the default execution context to reuse brainstorm context and save tokens.
 - Resolve references like "essas tasks", "as tasks", or "pode fazer" against tasks created, changed, loaded, or discussed in the current conversation first.

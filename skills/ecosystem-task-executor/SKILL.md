@@ -1,19 +1,19 @@
 ---
-name: ecosystem-task-executor
-description: "Execute centralized ecosystem tasks from ecosystem-ai-runner. Use when the user wants to run, execute, re-run, or implement tasks for a specific ecosystem, either in the current chat session or by asking the AI to run the ecosystem runner."
+name: workspace-task-executor
+description: "Execute centralized workspace tasks from workspace-ai-runner. Use when the user wants to run, execute, re-run, or implement tasks for a specific workspace, either in the current chat session or by asking the AI to run the workspace runner."
 ---
 
-# Ecosystem Task Executor
+# Workspace Task Executor
 
 ## Overview
 
-Use this skill when the user wants to execute centralized tasks under `ecosystems/<name>/sdd/tasks/`.
+Use this skill when the user wants to execute centralized tasks under `workspaces/<name>/sdd/tasks/`.
 
-The target ecosystem is mandatory. Execution in the current chat is the default when the user refers to tasks already created, changed, or discussed in this conversation. Runner execution requires an explicit user choice.
+The target workspace is mandatory. Execution in the current chat is the default when the user refers to tasks already created, changed, or discussed in this conversation. Runner execution requires an explicit user choice.
 
 ## Language Rule
 
-ENGLISH FIRST for ecosystem SDD content. When updating task files, task status
+ENGLISH FIRST for workspace SDD content. When updating task files, task status
 entries, SDD README notes, run summaries, or any other centralized SDD artifact,
 write in English even if the user conversation is in Portuguese. Only preserve
 another language for exact user-facing strings that the implementation itself
@@ -34,7 +34,7 @@ Use this skill for requests like:
 
 Before executing, identify:
 
-- ecosystem name
+- workspace name
 - task selection mode
 - execution mode
 
@@ -46,19 +46,19 @@ Valid task selection modes mirror the runner:
 - `--open-tasks`
 - `--open-scopes`
 
-## Ecosystem Selection
+## Workspace Selection
 
-The user must explicitly choose an ecosystem.
+The user must explicitly choose a workspace.
 
 If the user does not name one:
 
-1. Discover available ecosystems by finding `ecosystems/*/ecosystem.config.json`.
-2. Ask which ecosystem to use and include the discovered names.
+1. Discover available workspaces by finding `workspaces/*/workspace.config.json`.
+2. Ask which workspace to use and include the discovered names.
 3. Stop until the user answers.
 
-If no ecosystems exist, tell the user to create one with `ecosystem-bootstrap`.
+If no workspaces exist, tell the user to create one with `workspace-bootstrap`.
 
-Do not infer the ecosystem from the active editor tab or from recently opened files.
+Do not infer the workspace from the active editor tab or from recently opened files.
 
 ## Execution Mode Selection
 
@@ -82,9 +82,9 @@ When the user chooses runner, prefer running the runner from the current AI chat
 Use this when the user chooses current chat execution.
 
 1. Read:
-   - `ecosystems/<name>/ecosystem.config.json`
-   - `ecosystems/<name>/sdd/README.md`
-   - selected task files under `ecosystems/<name>/sdd/tasks/`
+   - `workspaces/<name>/workspace.config.json`
+   - `workspaces/<name>/sdd/README.md`
+   - selected task files under `workspaces/<name>/sdd/tasks/`
 2. Resolve repository ownership from task frontmatter.
 3. Use MCP `start_task_execution` before implementation so the GitHub Project item moves to `In Progress`.
 4. Inspect only the relevant repository files and docs.
@@ -95,14 +95,14 @@ Use this when the user chooses current chat execution.
 9. If work is blocked or incomplete, leave or move the task to `needs-rework` and record the concrete gap.
 10. Keep final output short: tasks executed, files changed, validation, and residual gaps.
 
-Do not mark tasks as `done`; use `ecosystem-task-closer` only after the user confirms the result is correct.
+Do not mark tasks as `done`; use `workspace-task-closer` only after the user confirms the result is correct.
 
 ## Runner Via Chat Workflow
 
 Use this when the user chooses runner execution.
 
-1. Resolve the ecosystem config path:
-   - `ecosystems/<name>/ecosystem.config.json`
+1. Resolve the workspace config path:
+   - `workspaces/<name>/workspace.config.json`
 2. Build the runner command using the selected mode.
 3. Run the same command first with `--dry-run`.
 4. If dry-run fails, report the error and do not run the real execution.
@@ -118,32 +118,32 @@ Use this when the user chooses runner execution.
 Example commands:
 
 ```bash
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --task <task-id> --dry-run
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --task <task-id>
+npm run tasks -- --config workspaces/<name>/workspace.config.json --task <task-id> --dry-run
+npm run tasks -- --config workspaces/<name>/workspace.config.json --task <task-id>
 ```
 
 ```bash
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --scope <scope-id> --dry-run
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --scope <scope-id>
+npm run tasks -- --config workspaces/<name>/workspace.config.json --scope <scope-id> --dry-run
+npm run tasks -- --config workspaces/<name>/workspace.config.json --scope <scope-id>
 ```
 
 ## Safety Rules
 
-- Never run the runner without an explicit ecosystem.
+- Never run the runner without an explicit workspace.
 - Never run the runner silently when the user only asked to execute a task and did not choose mode.
 - Do not execute every open task unless the user explicitly chooses `open-tasks` or `open-scopes`.
 - Do not revert unrelated user changes.
 - Prefer dry-run before every real runner execution.
 - Keep repo-local human docs in the owning repository, not in this runner.
 - Use `implemented` for delivered work that still needs user validation.
-- Reserve `done` for `ecosystem-task-closer` after explicit user confirmation.
+- Reserve `done` for `workspace-task-closer` after explicit user confirmation.
 
 ## User Question Templates
 
-When ecosystem is missing:
+When workspace is missing:
 
 ```text
-Qual ecosystem devo usar? Encontrei: `<name-a>`, `<name-b>`.
+Qual workspace devo usar? Encontrei: `<name-a>`, `<name-b>`.
 ```
 
 When execution mode is missing:

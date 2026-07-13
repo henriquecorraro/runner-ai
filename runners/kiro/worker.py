@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from .models import EcosystemConfig, Repository, Run, TaskDef, TaskRun, TaskStatus
+from .models import WorkspaceConfig, Repository, Run, TaskDef, TaskRun, TaskStatus
 from .board import move_task_card
 
 KIRO_CLI = os.environ.get("KIRO_CLI", "kiro-cli")
@@ -68,11 +68,11 @@ def resolve_model() -> str:
     return _resolved_model
 
 
-def _repo_by_id(eco: EcosystemConfig) -> dict[str, Repository]:
+def _repo_by_id(eco: WorkspaceConfig) -> dict[str, Repository]:
     return {r.id: r for r in eco.repositories}
 
 
-def build_prompt(task: TaskDef, eco: EcosystemConfig, output_file: str) -> str:
+def build_prompt(task: TaskDef, eco: WorkspaceConfig, output_file: str) -> str:
     """Build the full prompt for kiro, matching JS runner format."""
     repos = _repo_by_id(eco)
     repo_sections = []
@@ -106,16 +106,16 @@ Task status: {task.status}
         repo_sections.append(section)
 
     skills_section = f"""Skill operating instructions:
-- ENGLISH FIRST for ecosystem SDD artifacts: task files, titles, body text, textual frontmatter, Task Status entries, SDD README updates, run prompts, and output summaries must be written in English.
+- ENGLISH FIRST for workspace SDD artifacts: task files, titles, body text, textual frontmatter, Task Status entries, SDD README updates, run prompts, and output summaries must be written in English.
 - Before editing code, read and follow the umbrella skill when it exists:
-  - {eco.skills_dir}/ecosystem-operating-mode/SKILL.md (global)
-  - {eco.skills_dir}/ecosystem-task-executor/SKILL.md (execution)
-- If ecosystem-local skills exist in {eco.skills_dir}, inspect and follow them.
+  - {eco.skills_dir}/workspace-operating-mode/SKILL.md (global)
+  - {eco.skills_dir}/workspace-task-executor/SKILL.md (execution)
+- If workspace-local skills exist in {eco.skills_dir}, inspect and follow them.
 - If a listed skill path is missing, continue with the instructions already present in this prompt."""
 
-    return f"""You are running one Ecosystem AI Runner task for a centralized ecosystem SDD.
+    return f"""You are running one Workspace AI Runner task for a centralized workspace SDD.
 
-Ecosystem: {eco.name}
+Workspace: {eco.name}
 Task: {task.id}
 Title: {task.title}
 
@@ -123,7 +123,7 @@ Title: {task.title}
 
 Execution goals:
 - Execute the task below completely.
-- Keep all centralized ecosystem SDD updates and the mandatory output file in English.
+- Keep all centralized workspace SDD updates and the mandatory output file in English.
 - Run the narrowest useful validation in each touched repository.
 - Do not revert unrelated user changes.
 
@@ -136,10 +136,10 @@ Mandatory output file:
 
 Before finishing, create that output file with this Markdown contract:
 
-# Ecosystem AI Runner Output
+# Workspace AI Runner Output
 
 - Status: success | blocked | failed
-- Mode: centralized-ecosystem
+- Mode: centralized-workspace
 - Task: {task.id}
 - Repositories:
 - Result:
@@ -152,7 +152,7 @@ Before finishing, create that output file with this Markdown contract:
 The output file must stay short and operational. After writing it, read it back before ending your response."""
 
 
-def create_stage_dir(eco: EcosystemConfig, run_id: str, task: TaskDef, batch_index: int) -> str:
+def create_stage_dir(eco: WorkspaceConfig, run_id: str, task: TaskDef, batch_index: int) -> str:
     """Create and return the stage directory path for this task."""
     stage_name = f"{str(batch_index + 1).zfill(2)}-{_slugify(task.id)}"
     stage_dir = os.path.join(eco.history_root, run_id, stage_name)
@@ -168,14 +168,14 @@ def _write_json(path: str, data: dict):
     os.rename(tmp, path)
 
 
-def _build_metadata(eco: EcosystemConfig, run_id: str, task: TaskDef, stage_dir: str,
+def _build_metadata(eco: WorkspaceConfig, run_id: str, task: TaskDef, stage_dir: str,
                     status: str, started_at=None, finished_at=None, exit_code=None, failure=None):
     return {
-        "ecosystem": eco.name,
+        "workspace": eco.name,
         "agent": {"name": "kiro", "type": "kiro", "command": KIRO_CLI},
         "runId": run_id,
         "status": status,
-        "mode": "centralized-ecosystem",
+        "mode": "centralized-workspace",
         "batch": {"id": task.id, "label": task.title},
         "tasks": [{"id": task.id, "title": task.title, "scope": task.scope, "repositories": task.repositories, "file": task.file_path}],
         "startedAt": started_at,
@@ -192,7 +192,7 @@ def _build_metadata(eco: EcosystemConfig, run_id: str, task: TaskDef, stage_dir:
     }
 
 
-async def run_task(task_run: TaskRun, eco: EcosystemConfig, run_id: str, batch_index: int) -> None:
+async def run_task(task_run: TaskRun, eco: WorkspaceConfig, run_id: str, batch_index: int) -> None:
     """Execute a single task via kiro-cli chat."""
     task = task_run.task
     stage_dir = create_stage_dir(eco, run_id, task, batch_index)
@@ -214,7 +214,7 @@ async def run_task(task_run: TaskRun, eco: EcosystemConfig, run_id: str, batch_i
     args.extend(["--model", model])
     if KIRO_EFFORT:
         args.extend(["--effort", KIRO_EFFORT])
-    args.append(f"Read and execute the complete Ecosystem AI Runner prompt from {os.path.join(stage_dir, 'prompt.md')}. Follow it exactly, including writing the mandatory output file.")
+    args.append(f"Read and execute the complete Workspace AI Runner prompt from {os.path.join(stage_dir, 'prompt.md')}. Follow it exactly, including writing the mandatory output file.")
 
     # Write initial metadata
     started_at = datetime.now(timezone.utc).isoformat()
@@ -279,8 +279,8 @@ async def run_task(task_run: TaskRun, eco: EcosystemConfig, run_id: str, batch_i
 
     duration_ms = int((task_run.finished_at - task_run.started_at).total_seconds() * 1000)
     _write_json(os.path.join(stage_dir, "summary.json"), {
-        "ecosystemRunId": run_id,
-        "mode": "centralized-ecosystem",
+        "workspaceRunId": run_id,
+        "mode": "centralized-workspace",
         "agent": {"name": "kiro", "type": "kiro", "command": KIRO_CLI},
         "batch": {"id": task.id, "label": task.title},
         "tasks": [{"id": task.id, "scope": task.scope, "repositories": task.repositories, "file": task.file_name}],
@@ -293,10 +293,10 @@ async def run_task(task_run: TaskRun, eco: EcosystemConfig, run_id: str, batch_i
 
     # If no output.md was generated, create fallback
     if not os.path.exists(output_file) or not Path(output_file).read_text().strip():
-        Path(output_file).write_text(f"""# Ecosystem AI Runner Output
+        Path(output_file).write_text(f"""# Workspace AI Runner Output
 
 - Status: failed
-- Mode: centralized-ecosystem
+- Mode: centralized-workspace
 - Task: {task.id}
 - Repositories: {', '.join(task.repositories)}
 - Result: Runner generated this fallback because the task did not produce a valid mandatory output file.

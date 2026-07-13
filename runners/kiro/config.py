@@ -1,4 +1,4 @@
-"""Parse ecosystem config and task markdown files."""
+"""Parse workspace config and task markdown files."""
 from __future__ import annotations
 
 import json
@@ -7,13 +7,13 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from .models import EcosystemConfig, GitHubProject, Repository, TaskDef
+from .models import WorkspaceConfig, GitHubProject, Repository, TaskDef
 
 ACTIONABLE_STATUSES = {"open", "needs-rework"}
 
 
-def load_ecosystem(config_path: str) -> EcosystemConfig:
-    """Load ecosystem config from JSON file."""
+def load_workspace(config_path: str) -> WorkspaceConfig:
+    """Load workspace config from JSON file."""
     p = Path(config_path).resolve()
     raw = json.loads(p.read_text())
     config_dir = p.parent
@@ -55,7 +55,7 @@ def load_ecosystem(config_path: str) -> EcosystemConfig:
             number=number,
         )
 
-    return EcosystemConfig(
+    return WorkspaceConfig(
         name=raw["name"],
         config_path=str(p),
         config_dir=str(config_dir),
@@ -132,9 +132,9 @@ def parse_task_file(file_path: str) -> TaskDef:
     )
 
 
-def load_tasks(ecosystem: EcosystemConfig, status_filter: Optional[set[str]] = None) -> list[TaskDef]:
-    """Load all tasks from ecosystem, optionally filtered by status."""
-    tasks_dir = Path(ecosystem.tasks_dir)
+def load_tasks(workspace: WorkspaceConfig, status_filter: Optional[set[str]] = None) -> list[TaskDef]:
+    """Load all tasks from workspace, optionally filtered by status."""
+    tasks_dir = Path(workspace.tasks_dir)
     if not tasks_dir.is_dir():
         return []
     tasks = []

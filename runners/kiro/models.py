@@ -15,7 +15,7 @@ class TaskStatus(str, Enum):
 
 @dataclass
 class GitHubProject:
-    """GitHub Project V2 metadata from ecosystem config."""
+    """GitHub Project V2 metadata from workspace config."""
     url: str
     owner: str
     owner_type: str
@@ -49,7 +49,7 @@ class Repository:
 
 
 @dataclass
-class EcosystemConfig:
+class WorkspaceConfig:
     name: str
     config_path: str
     config_dir: str
@@ -79,7 +79,7 @@ class TaskRun:
 class Run:
     """Top-level parallel run."""
     id: str
-    ecosystem: str
+    workspace: str
     concurrency: int
     tasks: dict[str, TaskRun] = field(default_factory=dict)
     started_at: Optional[datetime] = None

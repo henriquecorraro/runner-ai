@@ -1,29 +1,29 @@
-# Ecosystem AI Runner Usage
+# Workspace AI Runner Usage
 
-The runner executes centralized ecosystem tasks stored inside this project.
+The runner executes centralized workspace tasks stored inside this project.
 
 It no longer depends on `docs/sdd` inside the target repositories.
 
-Human-facing repository docs stay in the repositories that own them. This runner stores only the ecosystem config, central tasks, run history, and docs-quality baselines.
+Human-facing repository docs stay in the repositories that own them. This runner stores only the workspace config, central tasks, run history, and docs-quality baselines.
 
 ## Language Contract
 
-ENGLISH FIRST for ecosystem SDD.
+ENGLISH FIRST for workspace SDD.
 
-Write centralized ecosystem SDD artifacts in English, including task files,
+Write centralized workspace SDD artifacts in English, including task files,
 task titles, task body sections, textual frontmatter values, `Task Status`
-entries, ecosystem SDD README notes, and generated run prompts. The chat with
+entries, workspace SDD README notes, and generated run prompts. The chat with
 the user may be in Portuguese or another language, but planning content must be
 translated to English before it is written to SDD. Preserve another language
 only for exact user-facing copy that a product task explicitly requires.
 
-## Ecosystem Layout
+## Workspace Layout
 
-Each ecosystem should look like this:
+Each workspace should look like this:
 
 ```text
-ecosystems/<name>/
-  ecosystem.config.json
+workspaces/<name>/
+  workspace.config.json
   sdd/
     README.md
     tasks/
@@ -31,19 +31,19 @@ ecosystems/<name>/
   runs/
 ```
 
-## Ecosystem Config
+## Workspace Config
 
-Example: [ecosystems/liguelead-platform/ecosystem.config.json](../ecosystems/liguelead-platform/ecosystem.config.json)
+Example: [workspaces/liguelead-platform/workspace.config.json](../workspaces/liguelead-platform/workspace.config.json)
 
 Important fields:
 
-- `name`: ecosystem name
-- `historyRoot`: where runs are stored relative to the ecosystem folder
-- `sddRoot`: where the centralized SDD lives relative to the ecosystem folder
-- `githubProject`: optional GitHub Projects v2 board for this ecosystem
+- `name`: workspace name
+- `historyRoot`: where runs are stored relative to the workspace folder
+- `sddRoot`: where the centralized SDD lives relative to the workspace folder
+- `githubProject`: optional GitHub Projects v2 board for this workspace
 - `defaultAgent`: default agent key. If omitted, the runner uses `codex`
 - `agents`: named agent configurations
-- `repositories`: local repositories that belong to the ecosystem
+- `repositories`: local repositories that belong to the workspace
 
 Supported agent adapter types:
 
@@ -144,49 +144,49 @@ Supported task statuses:
 Run one task by id, filename, or relative path:
 
 ```bash
-npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --task broadcast-interaction-unique-key-backend
+npm run tasks -- --config workspaces/liguelead/workspace.config.json --task broadcast-interaction-unique-key-backend
 ```
 
 Run with a non-default agent:
 
 ```bash
-npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --task broadcast-interaction-unique-key-backend --agent claude-code
+npm run tasks -- --config workspaces/liguelead/workspace.config.json --task broadcast-interaction-unique-key-backend --agent claude-code
 ```
 
 Resolve one task by fragment:
 
 ```bash
-npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --feature unique-key-frontend
+npm run tasks -- --config workspaces/liguelead/workspace.config.json --feature unique-key-frontend
 ```
 
 Run one scope:
 
 ```bash
-npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --scope broadcast-interaction-unique-key
+npm run tasks -- --config workspaces/liguelead/workspace.config.json --scope broadcast-interaction-unique-key
 ```
 
 Run all actionable tasks in one shared execution:
 
 ```bash
-npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --open-tasks
+npm run tasks -- --config workspaces/liguelead/workspace.config.json --open-tasks
 ```
 
 Run all actionable tasks grouped by scope:
 
 ```bash
-npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --open-scopes
+npm run tasks -- --config workspaces/liguelead/workspace.config.json --open-scopes
 ```
 
 Dry run any mode:
 
 ```bash
-npm run tasks -- --config ecosystems/liguelead/ecosystem.config.json --open-scopes --dry-run
+npm run tasks -- --config workspaces/liguelead/workspace.config.json --open-scopes --dry-run
 ```
 
 ## MCP For Agents
 
 The preferred chat-based workflow is MCP. The developer speaks naturally, and
-the current agent calls tools to inspect ecosystems, load tasks, remember active
+the current agent calls tools to inspect workspaces, load tasks, remember active
 tasks, create task files, update status, or explicitly run the isolated runner.
 
 Start the MCP server:
@@ -198,20 +198,20 @@ npm run mcp
 Available tool categories:
 
 - operating context: tells the agent to execute in the current chat by default
-- ecosystem creation: create an ecosystem deterministically with repository metadata and an optional GitHub Project
-- ecosystem and task reads: list ecosystems, list tasks, load one task
+- workspace creation: create an workspace deterministically with repository metadata and an optional GitHub Project
+- workspace and task reads: list workspaces, list tasks, load one task
 - active task memory: remember tasks created or discussed in this MCP session
 - task writes: create a task, move its GitHub Project card, or update runner status
 - runner execution: run the isolated runner only with explicit user confirmation
 
-`create_ecosystem` requires repository metadata and a deterministic GitHub
+`create_workspace` requires repository metadata and a deterministic GitHub
 Project decision:
 
-- pass `githubProject.url` when the ecosystem should sync future tasks to a GitHub Project
+- pass `githubProject.url` when the workspace should sync future tasks to a GitHub Project
 - pass `skipGithubProject: true` only after the user explicitly confirms that no Project is needed
 - if neither value is known, ask the user before calling the tool
 
-When an ecosystem has `githubProject` configured, `create_task` also creates
+When an workspace has `githubProject` configured, `create_task` also creates
 GitHub issues in every linked repository, adds the primary issue to the
 Project, stores the GitHub identifiers in task frontmatter, assigns the issue to
 the authenticated user, and moves the Project item to `Todo`.
@@ -256,24 +256,24 @@ the runner unless the user chooses runner execution.
 
 ## Codex Plugin
 
-The local plugin wrapper lives at `plugins/ecosystem-ai-runner/`.
+The local plugin wrapper lives at `plugins/workspace-ai-runner/`.
 
 Register the marketplace:
 
 ```bash
-codex plugin marketplace add /home/rick/projetos/ecosystem-ai-runner
+codex plugin marketplace add /home/rick/projetos/workspace-ai-runner
 ```
 
 The plugin includes:
 
 - `.codex-plugin/plugin.json`: plugin metadata
 - `.mcp.json`: MCP server configuration
-- `skills/ecosystem-ai-runner/SKILL.md`: plugin operating instructions
+- `skills/workspace-ai-runner/SKILL.md`: plugin operating instructions
 
 Direct MCP registration remains available:
 
 ```bash
-codex mcp add ecosystem-ai-runner -- node /home/rick/projetos/ecosystem-ai-runner/bin/ecosystem-ai-mcp.js
+codex mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
 ```
 
 ## Execution Model
@@ -296,7 +296,7 @@ The runner grants write access to:
 Runs are stored under:
 
 ```text
-ecosystems/<name>/runs/<run-id>/<batch>/
+workspaces/<name>/runs/<run-id>/<batch>/
 ```
 
 Each batch folder contains:
@@ -328,15 +328,15 @@ Use repo doc updates conservatively:
 
 ## Operating Mode Skill
 
-Use [skills/ecosystem-operating-mode/SKILL.md](../skills/ecosystem-operating-mode/SKILL.md) when an agent is working in this runner and needs to choose the right workflow or ecosystem-local skills before acting.
+Use [skills/workspace-operating-mode/SKILL.md](../skills/workspace-operating-mode/SKILL.md) when an agent is working in this runner and needs to choose the right workflow or workspace-local skills before acting.
 
 The runner also includes this operating instruction in generated agent prompts so isolated executions load the umbrella guidance before the task-specific workflow.
 
 ## Bootstrap Skill
 
-Use [skills/ecosystem-bootstrap/SKILL.md](../skills/ecosystem-bootstrap/SKILL.md) when you want to create a new ecosystem environment from one or more local repositories without generating tasks yet.
+Use [skills/workspace-bootstrap/SKILL.md](../skills/workspace-bootstrap/SKILL.md) when you want to create a new workspace environment from one or more local repositories without generating tasks yet.
 
-During bootstrap, the skill may also assess the repositories' human-facing documentation against [docs/human-doc-quality-rubric.md](human-doc-quality-rubric.md) and register a baseline in the ecosystem `sdd/README.md`.
+During bootstrap, the skill may also assess the repositories' human-facing documentation against [docs/human-doc-quality-rubric.md](human-doc-quality-rubric.md) and register a baseline in the workspace `sdd/README.md`.
 
 If the docs are below baseline, the skill should suggest a follow-up option to create an initial docs task instead of creating it automatically.
 
@@ -344,16 +344,16 @@ When that follow-up task runs, generated human docs should be written in the aff
 
 ## Task Factory Skill
 
-Use [skills/ecosystem-task-factory/SKILL.md](../skills/ecosystem-task-factory/SKILL.md) when you want to create or split centralized ecosystem tasks.
+Use [skills/workspace-task-factory/SKILL.md](../skills/workspace-task-factory/SKILL.md) when you want to create or split centralized workspace tasks.
 
 ## Task Executor Skill
 
-Use [skills/ecosystem-task-executor/SKILL.md](../skills/ecosystem-task-executor/SKILL.md) when you want to execute centralized ecosystem tasks.
+Use [skills/workspace-task-executor/SKILL.md](../skills/workspace-task-executor/SKILL.md) when you want to execute centralized workspace tasks.
 
-The executor requires an explicit ecosystem and execution mode. It can run work in the current chat session, or it can ask the AI in the current chat to run the runner. Runner execution creates history, but costs more tokens because it starts another agent session with a generated prompt and logs.
+The executor requires an explicit workspace and execution mode. It can run work in the current chat session, or it can ask the AI in the current chat to run the runner. Runner execution creates history, but costs more tokens because it starts another agent session with a generated prompt and logs.
 
 ## Task Closer Skill
 
-Use [skills/ecosystem-task-closer/SKILL.md](../skills/ecosystem-task-closer/SKILL.md) after the user confirms a task is correct and ready to close.
+Use [skills/workspace-task-closer/SKILL.md](../skills/workspace-task-closer/SKILL.md) after the user confirms a task is correct and ready to close.
 
-The closer updates final human docs in the owning repository, changes the task frontmatter to `status: done`, and updates the ecosystem `sdd/README.md` Task Status.
+The closer updates final human docs in the owning repository, changes the task frontmatter to `status: done`, and updates the workspace `sdd/README.md` Task Status.

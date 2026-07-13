@@ -1,21 +1,21 @@
-# Ecosystem AI Runner
+# Workspace AI Runner
 
-Generic runner for executing centralized ecosystem tasks across one or more local repositories with shared agent sessions.
+Generic runner for executing centralized workspace tasks across one or more local repositories with shared agent sessions.
 
-The runner is not tied to a single product. Each ecosystem lives under `ecosystems/<name>/` and owns its own config, centralized SDD, local skills, and execution history.
+The runner is not tied to a single product. Each workspace lives under `workspaces/<name>/` and owns its own config, centralized SDD, local skills, and execution history.
 
 If you are an AI agent reading this repository after clone, read [HOWTOUSE.md](HOWTOUSE.md) first. It is the operating guide for Codex, Claude Code, or any compatible coding agent.
 
 ## Structure
 
 ```text
-ecosystem-ai-runner/
+workspace-ai-runner/
   bin/
   docs/
   skills/
-  ecosystems/
+  workspaces/
     liguelead/
-      ecosystem.config.json
+      workspace.config.json
       sdd/
       skills/
       runs/
@@ -24,24 +24,24 @@ ecosystem-ai-runner/
 ## Core Idea
 
 - repositories stay focused on code and repo-local docs
-- ecosystem planning stays centralized in this runner
-- ecosystems may link to one GitHub Project through `githubProject.url`
-- tasks live in `ecosystems/<name>/sdd/tasks/`
-- centralized ecosystem SDD artifacts are English-first, even when the chat is in another language
+- workspace planning stays centralized in this runner
+- workspaces may link to one GitHub Project through `githubProject.url`
+- tasks live in `workspaces/<name>/sdd/tasks/`
+- centralized workspace SDD artifacts are English-first, even when the chat is in another language
 - related tasks can share the same `scope`
 - the runner can execute one task, one scope, all open tasks, or all open scopes
-- work follows the sequence: create ecosystem, create tasks, execute tasks, validate with the developer, then close tasks
+- work follows the sequence: create workspace, create tasks, execute tasks, validate with the developer, then close tasks
 
 ## Workflow
 
 Use the skills in this order:
 
-1. `ecosystem-operating-mode`: choose the right workflow and local skills.
-2. `ecosystem-bootstrap`: create or register an ecosystem.
-3. `ecosystem-task-factory`: create centralized task files.
-4. `ecosystem-task-executor`: execute tasks in the current chat or via runner from the chat.
+1. `workspace-operating-mode`: choose the right workflow and local skills.
+2. `workspace-bootstrap`: create or register an workspace.
+3. `workspace-task-factory`: create centralized task files.
+4. `workspace-task-executor`: execute tasks in the current chat or via runner from the chat.
 5. Developer and AI validate the result.
-6. `ecosystem-task-closer`: mark tasks as `done` only after validation.
+6. `workspace-task-closer`: mark tasks as `done` only after validation.
 
 Do not mark tasks as `done` during execution. Use `implemented` or `needs-rework` until the developer confirms the result.
 
@@ -50,37 +50,37 @@ Do not mark tasks as `done` during execution. Use `implemented` or `needs-rework
 Run one scope:
 
 ```bash
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --scope <scope-id>
+npm run tasks -- --config workspaces/<name>/workspace.config.json --scope <scope-id>
 ```
 
 Run all actionable tasks in one shared execution:
 
 ```bash
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --open-tasks
+npm run tasks -- --config workspaces/<name>/workspace.config.json --open-tasks
 ```
 
 Run all actionable tasks grouped by scope:
 
 ```bash
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --open-scopes
+npm run tasks -- --config workspaces/<name>/workspace.config.json --open-scopes
 ```
 
 Dry-run before invoking an agent:
 
 ```bash
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --open-scopes --dry-run
+npm run tasks -- --config workspaces/<name>/workspace.config.json --open-scopes --dry-run
 ```
 
 Choose an agent explicitly:
 
 ```bash
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --task <task-id> --agent claude-code
+npm run tasks -- --config workspaces/<name>/workspace.config.json --task <task-id> --agent claude-code
 ```
 
 ## MCP For Agents
 
 The preferred long-term interface is MCP: the developer talks normally in the
-AI chat, and the agent calls ecosystem tools behind the scenes.
+AI chat, and the agent calls workspace tools behind the scenes.
 
 Start the MCP server with:
 
@@ -90,8 +90,8 @@ npm run mcp
 
 The MCP tools are designed around this rule:
 
-- ecosystem creation goes through `create_ecosystem`, which requires either a GitHub Project URL or explicit confirmation to create without one
-- `create_task` uses all-or-fail GitHub sync when the ecosystem has `githubProject`: it creates GitHub issues in every linked repository, adds the primary issue to the Project in `Todo`, assigns every issue to the authenticated user, and only then records the local task
+- workspace creation goes through `create_workspace`, which requires either a GitHub Project URL or explicit confirmation to create without one
+- `create_task` uses all-or-fail GitHub sync when the workspace has `githubProject`: it creates GitHub issues in every linked repository, adds the primary issue to the Project in `Todo`, assigns every issue to the authenticated user, and only then records the local task
 - current-chat task execution uses `start_task_execution` before implementation and `finish_task_execution` after implementation
 - validated closure asks for PR handoff intent, then uses `set_task_status(status="done", userValidated=true)` to update the issue closeout and move the Project item to `Done`
 - current chat execution is the default, because it reuses the existing brainstorm context
@@ -106,39 +106,39 @@ and operating skill.
 Register the local plugin marketplace:
 
 ```bash
-codex plugin marketplace add /home/rick/projetos/ecosystem-ai-runner
+codex plugin marketplace add /home/rick/projetos/workspace-ai-runner
 ```
 
 The plugin lives at:
 
 ```text
-plugins/ecosystem-ai-runner/
+plugins/workspace-ai-runner/
 ```
 
 For direct MCP usage without relying on plugin UI activation, register the MCP
 server explicitly:
 
 ```bash
-codex mcp add ecosystem-ai-runner -- node /home/rick/projetos/ecosystem-ai-runner/bin/ecosystem-ai-mcp.js
+codex mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
 ```
 
 Then start Codex from this repo:
 
 ```bash
-codex -C /home/rick/projetos/ecosystem-ai-runner
+codex -C /home/rick/projetos/workspace-ai-runner
 ```
 
 ## Claude Code Plugin
 
 The same plugin folder also exposes a Claude Code manifest at
-`plugins/ecosystem-ai-runner/.claude-plugin/plugin.json`, alongside a local
+`plugins/workspace-ai-runner/.claude-plugin/plugin.json`, alongside a local
 marketplace declaration at `.claude-plugin/marketplace.json`.
 
 Register the local marketplace and install the plugin from inside Claude Code:
 
 ```text
 /plugin marketplace add /home/luiz/liguelead/runner-ai
-/plugin install ecosystem-ai-runner@ecosystem-ai-runner-local
+/plugin install workspace-ai-runner@workspace-ai-runner-local
 ```
 
 The plugin manifest declares the MCP server inline using `${CLAUDE_PLUGIN_ROOT}`,
@@ -148,7 +148,7 @@ For direct MCP usage without going through the plugin UI, register the MCP
 server explicitly instead:
 
 ```bash
-claude mcp add ecosystem-ai-runner -- node /home/luiz/liguelead/runner-ai/bin/ecosystem-ai-mcp.js
+claude mcp add workspace-ai-runner -- node /home/luiz/liguelead/runner-ai/bin/workspace-ai-mcp.js
 ```
 
 ## Installing Skills
@@ -173,20 +173,20 @@ From the repository root, link the generic skills for Codex:
 ```bash
 mkdir -p "$HOME/.codex/skills"
 
-ln -sfn "$PWD/skills/ecosystem-bootstrap" \
-  "$HOME/.codex/skills/ecosystem-bootstrap"
+ln -sfn "$PWD/skills/workspace-bootstrap" \
+  "$HOME/.codex/skills/workspace-bootstrap"
 
-ln -sfn "$PWD/skills/ecosystem-operating-mode" \
-  "$HOME/.codex/skills/ecosystem-operating-mode"
+ln -sfn "$PWD/skills/workspace-operating-mode" \
+  "$HOME/.codex/skills/workspace-operating-mode"
 
-ln -sfn "$PWD/skills/ecosystem-task-factory" \
-  "$HOME/.codex/skills/ecosystem-task-factory"
+ln -sfn "$PWD/skills/workspace-task-factory" \
+  "$HOME/.codex/skills/workspace-task-factory"
 
-ln -sfn "$PWD/skills/ecosystem-task-executor" \
-  "$HOME/.codex/skills/ecosystem-task-executor"
+ln -sfn "$PWD/skills/workspace-task-executor" \
+  "$HOME/.codex/skills/workspace-task-executor"
 
-ln -sfn "$PWD/skills/ecosystem-task-closer" \
-  "$HOME/.codex/skills/ecosystem-task-closer"
+ln -sfn "$PWD/skills/workspace-task-closer" \
+  "$HOME/.codex/skills/workspace-task-closer"
 
 ln -sfn "$PWD/skills/codex-direct-mode" \
   "$HOME/.codex/skills/codex-direct-mode"
@@ -197,20 +197,20 @@ Or link them for Claude Code:
 ```bash
 mkdir -p "$HOME/.claude/skills"
 
-ln -sfn "$PWD/skills/ecosystem-bootstrap" \
-  "$HOME/.claude/skills/ecosystem-bootstrap"
+ln -sfn "$PWD/skills/workspace-bootstrap" \
+  "$HOME/.claude/skills/workspace-bootstrap"
 
-ln -sfn "$PWD/skills/ecosystem-operating-mode" \
-  "$HOME/.claude/skills/ecosystem-operating-mode"
+ln -sfn "$PWD/skills/workspace-operating-mode" \
+  "$HOME/.claude/skills/workspace-operating-mode"
 
-ln -sfn "$PWD/skills/ecosystem-task-factory" \
-  "$HOME/.claude/skills/ecosystem-task-factory"
+ln -sfn "$PWD/skills/workspace-task-factory" \
+  "$HOME/.claude/skills/workspace-task-factory"
 
-ln -sfn "$PWD/skills/ecosystem-task-executor" \
-  "$HOME/.claude/skills/ecosystem-task-executor"
+ln -sfn "$PWD/skills/workspace-task-executor" \
+  "$HOME/.claude/skills/workspace-task-executor"
 
-ln -sfn "$PWD/skills/ecosystem-task-closer" \
-  "$HOME/.claude/skills/ecosystem-task-closer"
+ln -sfn "$PWD/skills/workspace-task-closer" \
+  "$HOME/.claude/skills/workspace-task-closer"
 
 ln -sfn "$PWD/skills/codex-direct-mode" \
   "$HOME/.claude/skills/codex-direct-mode"
@@ -223,28 +223,28 @@ After the links exist, use the skill by naming it in the prompt.
 Examples:
 
 ```text
-Use the `ecosystem-bootstrap` skill.
+Use the `workspace-bootstrap` skill.
 Crie um novo ecossistema chamado flow com os repositórios /caminho/repo-a e /caminho/repo-b.
 Não crie tasks ainda.
 ```
 
 ```text
-Use the `ecosystem-task-factory` skill.
+Use the `workspace-task-factory` skill.
 Crie tasks para o scope onboarding no ecossistema flow.
 ```
 
 ```text
-Use the `ecosystem-task-executor` skill.
+Use the `workspace-task-executor` skill.
 Execute a task onboarding-backend no ecossistema flow via runner a partir deste chat.
 ```
 
 ```text
-Use the `ecosystem-task-executor` skill.
+Use the `workspace-task-executor` skill.
 Execute a task onboarding-backend no ecossistema flow nesta conversa.
 ```
 
 ```text
-Use the `ecosystem-task-closer` skill.
+Use the `workspace-task-closer` skill.
 A task onboarding-backend do ecossistema flow foi validada. Marque como done e atualize a doc humana no repositório dono.
 ```
 

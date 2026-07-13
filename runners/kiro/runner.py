@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from .config import ACTIONABLE_STATUSES, EcosystemConfig, TaskDef, load_ecosystem, load_tasks
+from .config import ACTIONABLE_STATUSES, WorkspaceConfig, TaskDef, load_workspace, load_tasks
 from .models import Run, TaskRun, TaskStatus
 from .worker import run_task
 
@@ -44,7 +44,7 @@ def skip_blocked(run: Run) -> list[str]:
 
 
 async def execute(
-    eco: EcosystemConfig,
+    eco: WorkspaceConfig,
     tasks: list[TaskDef],
     concurrency: int,
     run_id: Optional[str] = None,
@@ -53,7 +53,7 @@ async def execute(
     """Run tasks in parallel with dependency resolution.
     
     Args:
-        eco: Loaded ecosystem config
+        eco: Loaded workspace config
         tasks: List of tasks to execute
         concurrency: Max parallel workers
         run_id: Optional custom run ID
@@ -62,7 +62,7 @@ async def execute(
     run_id = run_id or generate_run_id()
     run = Run(
         id=run_id,
-        ecosystem=eco.name,
+        workspace=eco.name,
         concurrency=concurrency,
         started_at=datetime.now(timezone.utc),
     )

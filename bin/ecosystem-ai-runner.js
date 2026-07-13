@@ -5,27 +5,27 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { normalizeGitHubProjectConfig } = require('../lib/github-project');
 
-const DEFAULT_CONFIG_FILE = 'ecosystem.config.json';
+const DEFAULT_CONFIG_FILE = 'workspace.config.json';
 const ACTIONABLE_TASK_STATUSES = new Set(['open', 'needs-rework']);
 const VALID_TASK_STATUSES = new Set(['open', 'implemented', 'needs-rework', 'done']);
 
 function printHelp() {
-  console.log(`Ecosystem AI Runner
+  console.log(`Workspace AI Runner
 
 Usage:
-  ecosystem-ai-runner --config <path> --task <task-id-or-path>
-  ecosystem-ai-runner --config <path> --feature <task-name-fragment>
-  ecosystem-ai-runner --config <path> --scope <scope-id>
-  ecosystem-ai-runner --config <path> --open-tasks
-  ecosystem-ai-runner --config <path> --open-scopes
+  workspace-ai-runner --config <path> --task <task-id-or-path>
+  workspace-ai-runner --config <path> --feature <task-name-fragment>
+  workspace-ai-runner --config <path> --scope <scope-id>
+  workspace-ai-runner --config <path> --open-tasks
+  workspace-ai-runner --config <path> --open-scopes
 
 Options:
-  --task <value>         Uses one central ecosystem task by id, filename, or relative path. Repeatable.
+  --task <value>         Uses one central workspace task by id, filename, or relative path. Repeatable.
   --feature <value>      Resolves one central task by filename fragment.
   --scope <scope-id>     Executes every task in one scope within a shared agent session.
   --open-tasks           Executes every actionable task ("open" and "needs-rework") in one shared agent session.
   --open-scopes          Groups actionable tasks by scope and runs one shared agent session per scope.
-  --config <path>        Uses a custom ecosystem config file. Default: ${DEFAULT_CONFIG_FILE}
+  --config <path>        Uses a custom workspace config file. Default: ${DEFAULT_CONFIG_FILE}
   --agent <name>         Uses an agent from config.agents. Default: config.defaultAgent or codex.
   --run-id <value>       Uses a custom output run id. Default: timestamp.
   --dry-run              Resolves config and tasks without invoking an agent.
@@ -163,7 +163,7 @@ function loadJson(filePath, label) {
 
 function loadConfig(configPath) {
   const absolutePath = path.resolve(process.cwd(), configPath);
-  const config = loadJson(absolutePath, 'Ecosystem config');
+  const config = loadJson(absolutePath, 'Workspace config');
 
   if (!config.name) {
     throw new Error('Config must define "name".');
@@ -381,7 +381,7 @@ function resolveTaskReference(taskReference, taskIndex) {
     throw new Error(`Task reference "${taskReference}" is ambiguous.`);
   }
 
-  throw new Error(`Task "${taskReference}" was not found in the ecosystem task directory.`);
+  throw new Error(`Task "${taskReference}" was not found in the workspace task directory.`);
 }
 
 function resolveFeatureTask(feature, taskIndex) {
@@ -392,7 +392,7 @@ function resolveFeatureTask(feature, taskIndex) {
   });
 
   if (matches.length === 0) {
-    throw new Error(`Feature "${feature}" did not match any central ecosystem task.`);
+    throw new Error(`Feature "${feature}" did not match any central workspace task.`);
   }
 
   if (matches.length > 1) {
@@ -459,25 +459,25 @@ function buildRepositoryGuidance(repository) {
   return lines;
 }
 
-function buildSkillInstructions({ ecosystemDir }) {
+function buildSkillInstructions({ wsDir }) {
   const sharedSkillsDir = path.resolve(__dirname, '..', 'skills');
-  const ecosystemSkillsDir = path.join(ecosystemDir, 'skills');
+  const wsSkillsDir = path.join(wsDir, 'skills');
 
   return [
     'Skill operating instructions:',
-    '- ENGLISH FIRST for ecosystem SDD artifacts: task files, titles, body text, textual frontmatter, Task Status entries, SDD README updates, run prompts, and output summaries must be written in English.',
+    '- ENGLISH FIRST for workspace SDD artifacts: task files, titles, body text, textual frontmatter, Task Status entries, SDD README updates, run prompts, and output summaries must be written in English.',
     '- The user conversation may be in Portuguese or another language; translate planning content to English before writing centralized SDD artifacts.',
     '- Before editing code, read and follow the umbrella skill when it exists:',
-    `  - ${path.join(sharedSkillsDir, 'ecosystem-operating-mode', 'SKILL.md')}`,
+    `  - ${path.join(sharedSkillsDir, 'workspace-operating-mode', 'SKILL.md')}`,
     '- Then read the specific execution skill when it exists:',
-    `  - ${path.join(sharedSkillsDir, 'ecosystem-task-executor', 'SKILL.md')}`,
-    '- If ecosystem-local skills exist, inspect them and follow any that apply:',
-    `  - ${ecosystemSkillsDir}`,
+    `  - ${path.join(sharedSkillsDir, 'workspace-task-executor', 'SKILL.md')}`,
+    '- If workspace-local skills exist, inspect them and follow any that apply:',
+    `  - ${wsSkillsDir}`,
     '- If a listed skill path is missing, continue with the instructions already present in this prompt.',
   ].join('\n');
 }
 
-function buildSharedPrompt({ ecosystemName, ecosystemDir, githubProject, batch, repositoriesById, outputFile }) {
+function buildSharedPrompt({ wsName, wsDir, githubProject, batch, repositoriesById, outputFile }) {
   const repositories = groupTasksByRepository(batch.tasks, repositoriesById);
   const repositorySections = repositories.map(({ repository, tasks }) => {
     const taskSections = tasks
@@ -528,18 +528,18 @@ function buildSharedPrompt({ ecosystemName, ecosystemDir, githubProject, batch, 
   });
 
   return [
-    'You are running one shared Ecosystem AI Runner stage for a centralized ecosystem SDD.',
+    'You are running one shared Workspace AI Runner stage for a centralized workspace SDD.',
     '',
-    `Ecosystem: ${ecosystemName}`,
+    `Workspace: ${wsName}`,
     ...(githubProject ? [`GitHub Project: ${githubProject.url}`] : []),
     `Batch id: ${batch.id}`,
     `Batch label: ${batch.label}`,
     '',
-    buildSkillInstructions({ ecosystemDir }),
+    buildSkillInstructions({ wsDir }),
     '',
     'Execution goals:',
     '- Execute every task listed below in the same agent session.',
-    '- Keep all centralized ecosystem SDD updates and the mandatory output file in English.',
+    '- Keep all centralized workspace SDD updates and the mandatory output file in English.',
     '- Use the task repository ownership to decide where to edit code.',
     '- Keep cross-repository contract changes aligned across all affected repositories.',
     '- Keep execution summaries short and operational to control token cost.',
@@ -557,10 +557,10 @@ function buildSharedPrompt({ ecosystemName, ecosystemDir, githubProject, batch, 
     '',
     'Before finishing, create that output file with this Markdown contract:',
     '',
-    '# Ecosystem AI Runner Output',
+    '# Workspace AI Runner Output',
     '',
     '- Status: success | blocked | failed',
-    '- Mode: centralized-ecosystem',
+    '- Mode: centralized-workspace',
     `- Batch: ${batch.id}`,
     '- Repositories:',
     '- Tasks:',
@@ -647,7 +647,7 @@ function buildAgentInvocation({ agent, stageHistory, cwd, writableRoots }) {
     }
 
     args.push(
-      `Read and execute the complete Ecosystem AI Runner prompt from ${stageHistory.promptFile}. Follow it exactly, including writing the mandatory output file.`,
+      `Read and execute the complete Workspace AI Runner prompt from ${stageHistory.promptFile}. Follow it exactly, including writing the mandatory output file.`,
     );
   }
 
@@ -786,10 +786,10 @@ function readTokenUsage(logFile) {
 
 function createFallbackOutput({ batch, outputFile, logFile, reason }) {
   return [
-    '# Ecosystem AI Runner Output',
+    '# Workspace AI Runner Output',
     '',
     '- Status: failed',
-    '- Mode: centralized-ecosystem',
+    '- Mode: centralized-workspace',
     `- Batch: ${batch.id}`,
     `- Repositories: ${[...new Set(batch.tasks.flatMap((task) => task.repositories))].join(', ')}`,
     `- Tasks: ${batch.tasks.map((task) => task.id).join(', ')}`,
@@ -803,7 +803,7 @@ function createFallbackOutput({ batch, outputFile, logFile, reason }) {
 }
 
 function buildBatchMetadata({
-  ecosystemName,
+  wsName,
   githubProject,
   agent,
   runId,
@@ -817,7 +817,7 @@ function buildBatchMetadata({
   failureReason = null,
 }) {
   return {
-    ecosystem: ecosystemName,
+    workspace: wsName,
     githubProject: githubProject || null,
     agent: agent
       ? {
@@ -829,7 +829,7 @@ function buildBatchMetadata({
       : null,
     runId,
     status,
-    mode: 'centralized-ecosystem',
+    mode: 'centralized-workspace',
     batch: {
       id: batch.id,
       label: batch.label,
@@ -858,8 +858,8 @@ function buildBatchMetadata({
 
 function buildBatchSummary({ runId, githubProject, agent, batch, history, status, exitCode, durationMs, usage, failureReason = null }) {
   return {
-    ecosystemRunId: runId,
-    mode: 'centralized-ecosystem',
+    workspaceRunId: runId,
+    mode: 'centralized-workspace',
     githubProject: githubProject || null,
     agent: agent
       ? {
@@ -896,7 +896,7 @@ function resolveBatches(options, taskIndex) {
     const scopeTasks = taskIndex.list.filter((task) => task.scope === options.scope);
 
     if (scopeTasks.length === 0) {
-      throw new Error(`Scope "${options.scope}" did not match any central ecosystem task.`);
+      throw new Error(`Scope "${options.scope}" did not match any central workspace task.`);
     }
 
     return [
@@ -912,7 +912,7 @@ function resolveBatches(options, taskIndex) {
     const openTasks = taskIndex.list.filter((task) => ACTIONABLE_TASK_STATUSES.has(task.status));
 
     if (openTasks.length === 0) {
-      throw new Error('No actionable tasks were found in the central ecosystem SDD.');
+      throw new Error('No actionable tasks were found in the central workspace SDD.');
     }
 
     const batchesByScope = new Map();
@@ -940,7 +940,7 @@ function resolveBatches(options, taskIndex) {
     const openTasks = taskIndex.list.filter((task) => ACTIONABLE_TASK_STATUSES.has(task.status));
 
     if (openTasks.length === 0) {
-      throw new Error('No actionable tasks were found in the central ecosystem SDD.');
+      throw new Error('No actionable tasks were found in the central workspace SDD.');
     }
 
     return [
@@ -979,12 +979,12 @@ function resolveBatches(options, taskIndex) {
 }
 
 function log(message) {
-  console.log(`[ecosystem-ai-runner] ${message}`);
+  console.log(`[workspace-ai-runner] ${message}`);
 }
 
 async function runBatch({
-  ecosystemName,
-  ecosystemDir,
+  wsName,
+  wsDir,
   githubProject,
   agent,
   runId,
@@ -1017,8 +1017,8 @@ async function runBatch({
   snapshotBatchTasks(history.tasksDir, batch.tasks);
 
   const prompt = buildSharedPrompt({
-    ecosystemName,
-    ecosystemDir,
+    wsName,
+    wsDir,
     githubProject,
     batch,
     repositoriesById,
@@ -1029,7 +1029,7 @@ async function runBatch({
   writeJson(
     history.metadataFile,
     buildBatchMetadata({
-      ecosystemName,
+      wsName,
       githubProject,
       agent,
       runId,
@@ -1071,7 +1071,7 @@ async function runBatch({
     writeJson(
       history.metadataFile,
       buildBatchMetadata({
-        ecosystemName,
+        wsName,
         githubProject,
         agent,
         runId,
@@ -1112,7 +1112,7 @@ async function runBatch({
   writeJson(
     history.metadataFile,
     buildBatchMetadata({
-      ecosystemName,
+      wsName,
       githubProject,
       agent,
       runId,
@@ -1177,7 +1177,7 @@ async function main() {
   const agent = resolveAgentConfig(config, options.agent);
 
   log(`config: ${configPath}`);
-  log(`ecosystem: ${config.name}`);
+  log(`workspace: ${config.name}`);
   if (config.githubProject) {
     log(`github project: ${config.githubProject.url}`);
   }
@@ -1188,8 +1188,8 @@ async function main() {
 
   for (let index = 0; index < batches.length; index += 1) {
     await runBatch({
-      ecosystemName: config.name,
-      ecosystemDir: configDir,
+      wsName: config.name,
+      wsDir: configDir,
       githubProject: config.githubProject,
       agent,
       runId,
@@ -1206,10 +1206,10 @@ async function main() {
     return;
   }
 
-  log('ecosystem execution completed successfully.');
+  log('workspace execution completed successfully.');
 }
 
 main().catch((error) => {
-  console.error(`[ecosystem-ai-runner] failed: ${error.message}`);
+  console.error(`[workspace-ai-runner] failed: ${error.message}`);
   process.exitCode = 1;
 });

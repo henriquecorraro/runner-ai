@@ -8,11 +8,11 @@ Operating guide for AI agents working in this repository. Read this before actin
 
 | Stage | Skill | What it does |
 |-------|-------|--------------|
-| 1 | `ecosystem-bootstrap` | Create/register an ecosystem |
-| 2 | `ecosystem-task-factory` | Create centralized task files |
-| 3 | `ecosystem-task-executor` | Execute tasks (chat or runner) |
+| 1 | `workspace-bootstrap` | Create/register an workspace |
+| 2 | `workspace-task-factory` | Create centralized task files |
+| 3 | `workspace-task-executor` | Execute tasks (chat or runner) |
 | 4 | Developer validates | AI summarizes, human confirms |
-| 5 | `ecosystem-task-closer` | Mark done + update docs |
+| 5 | `workspace-task-closer` | Mark done + update docs |
 
 ## Rules
 
@@ -21,20 +21,20 @@ Operating guide for AI agents working in this repository. Read this before actin
 - **Never mark `done`** until the developer confirms validation. Use `implemented` or `needs-rework` until then.
 - **Resolve contextual references** ("essas tasks", "pode fazer") against the current conversation first.
 
-## Discovering Ecosystems
+## Discovering Workspaces
 
 ```bash
-find ecosystems -maxdepth 2 -name ecosystem.config.json -print
+find workspaces -maxdepth 2 -name workspace.config.json -print
 ```
 
-If the user doesn't name an ecosystem, list available ones and ask.
+If the user doesn't name an workspace, list available ones and ask.
 
-Each ecosystem config may include `githubProject.url`. When present, use it as
+Each workspace config may include `githubProject.url`. When present, use it as
 the canonical GitHub Projects board for future task-card sync.
 
 ## Task File Format
 
-Files live in `ecosystems/<name>/sdd/tasks/` with YAML frontmatter:
+Files live in `workspaces/<name>/sdd/tasks/` with YAML frontmatter:
 
 ```yaml
 ---
@@ -58,14 +58,14 @@ Statuses: `open` → `implemented` → `done` (or `needs-rework` for another pas
 
 **In current chat** (default, saves tokens):
 ```text
-Use the `ecosystem-task-executor` skill.
-Execute task `invoice-crud-backend` in ecosystem billing-platform in this chat.
+Use the `workspace-task-executor` skill.
+Execute task `invoice-crud-backend` in workspace billing-platform in this chat.
 ```
 
 **Via runner** (isolated, creates history):
 ```bash
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --task <id> --dry-run
-npm run tasks -- --config ecosystems/<name>/ecosystem.config.json --task <id>
+npm run tasks -- --config workspaces/<name>/workspace.config.json --task <id> --dry-run
+npm run tasks -- --config workspaces/<name>/workspace.config.json --task <id>
 ```
 
 Selection flags: `--task <id>`, `--scope <id>`, `--feature <fragment>`, `--open-tasks`, `--open-scopes`.
@@ -79,10 +79,10 @@ Start the MCP server:
 npm run mcp
 ```
 
-Available tools: `get_operating_context`, `list_ecosystems`, `create_ecosystem`, `list_tasks`, `get_task`, `get_active_tasks`, `remember_active_tasks`, `create_task`, `start_task_execution`, `finish_task_execution`, `set_task_board_status`, `set_task_status`, `run_with_runner`.
+Available tools: `get_operating_context`, `list_workspaces`, `create_workspace`, `list_tasks`, `get_task`, `get_active_tasks`, `remember_active_tasks`, `create_task`, `start_task_execution`, `finish_task_execution`, `set_task_board_status`, `set_task_status`, `run_with_runner`.
 
-Use `create_ecosystem` for deterministic ecosystem creation. If the user has
-not provided a GitHub Project URL, ask for the URL or ask whether the ecosystem
+Use `create_workspace` for deterministic workspace creation. If the user has
+not provided a GitHub Project URL, ask for the URL or ask whether the workspace
 should be created without a Project. Only pass `skipGithubProject: true` after
 that explicit confirmation.
 
@@ -101,7 +101,7 @@ Skills are in `skills/`. Link them to your AI tool:
 **Codex:**
 ```bash
 mkdir -p "$HOME/.codex/skills"
-for skill in ecosystem-bootstrap ecosystem-operating-mode ecosystem-task-factory ecosystem-task-executor ecosystem-task-closer codex-direct-mode; do
+for skill in workspace-bootstrap workspace-operating-mode workspace-task-factory workspace-task-executor workspace-task-closer codex-direct-mode; do
   ln -sfn "$PWD/skills/$skill" "$HOME/.codex/skills/$skill"
 done
 ```
@@ -109,7 +109,7 @@ done
 **Claude Code:**
 ```bash
 mkdir -p "$HOME/.claude/skills"
-for skill in ecosystem-bootstrap ecosystem-operating-mode ecosystem-task-factory ecosystem-task-executor ecosystem-task-closer codex-direct-mode; do
+for skill in workspace-bootstrap workspace-operating-mode workspace-task-factory workspace-task-executor workspace-task-closer codex-direct-mode; do
   ln -sfn "$PWD/skills/$skill" "$HOME/.claude/skills/$skill"
 done
 ```
@@ -118,14 +118,14 @@ done
 
 **Codex:**
 ```bash
-codex plugin marketplace add /home/rick/projetos/ecosystem-ai-runner
+codex plugin marketplace add /home/rick/projetos/workspace-ai-runner
 # or direct MCP:
-codex mcp add ecosystem-ai-runner -- node /home/rick/projetos/ecosystem-ai-runner/bin/ecosystem-ai-mcp.js
+codex mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
 ```
 
 **Claude Code:**
 ```bash
-claude mcp add ecosystem-ai-runner -- node /home/rick/projetos/ecosystem-ai-runner/bin/ecosystem-ai-mcp.js
+claude mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
 ```
 
 ## After Execution

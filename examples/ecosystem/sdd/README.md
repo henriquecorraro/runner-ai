@@ -1,13 +1,13 @@
-# Example Ecosystem SDD
+# Example Workspace SDD
 
-This folder shows a generic centralized SDD layout for one ecosystem.
+This folder shows a generic centralized SDD layout for one workspace.
 
-The repositories remain the source of code and human documentation. The runner keeps the ecosystem config, tasks, and execution history.
+The repositories remain the source of code and human documentation. The runner keeps the workspace config, tasks, and execution history.
 
 ## Structure
 
-- `tasks/`: executable ecosystem tasks
-- use the shared `ecosystem-task-factory` skill for task creation
+- `tasks/`: executable workspace tasks
+- use the shared `workspace-task-factory` skill for task creation
 - keep task status entries ordered oldest first, with new tasks appended at the end
 - name task files with their two-digit task number prefix, for example `01-example-task.md`
 

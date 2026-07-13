@@ -1,6 +1,6 @@
-# GitHub Token Setup for Ecosystem AI Runner
+# GitHub Token Setup for Workspace AI Runner
 
-Este guia explica como configurar o token do GitHub CLI (`gh`) para que o ecosystem-ai-runner consiga criar e mover cards no GitHub Projects v2.
+Este guia explica como configurar o token do GitHub CLI (`gh`) para que o workspace-ai-runner consiga criar e mover cards no GitHub Projects v2.
 
 ## Scopes necessários
 
@@ -151,9 +151,9 @@ does not have the correct permissions to execute `addProjectV2ItemById`
 
 ---
 
-### Projeto errado configurado no ecosystem
+### Projeto errado configurado no workspace
 
-Cards indo para o projeto errado? Verifique `ecosystem.config.json`:
+Cards indo para o projeto errado? Verifique `workspace.config.json`:
 
 ```json
 {

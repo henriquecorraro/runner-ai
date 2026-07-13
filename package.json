@@ -11,7 +11,7 @@
   "scripts": {
     "tasks": "node bin/ecosystem-ai-runner.js",
     "mcp": "node bin/ecosystem-ai-mcp.js",
-    "check": "node --check lib/utils.js && node --check lib/frontmatter.js && node --check lib/github-project.js && node --check lib/github-sync.js && node --check lib/ecosystem-create.js && node --check lib/ecosystems.js && node --check lib/tasks.js && node --check lib/runner.js && node --check bin/ecosystem-ai-runner.js && node --check bin/ecosystem-ai-mcp.js"
+    "check": "node --check lib/utils.js && node --check lib/frontmatter.js && node --check lib/github-project.js && node --check lib/github-sync.js && node --check lib/workspace-create.js && node --check lib/workspaces.js && node --check lib/tasks.js && node --check lib/runner.js && node --check bin/ecosystem-ai-runner.js && node --check bin/ecosystem-ai-mcp.js"
   },
   "engines": {
     "node": ">=18"

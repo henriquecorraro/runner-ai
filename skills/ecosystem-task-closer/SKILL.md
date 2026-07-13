@@ -1,13 +1,13 @@
 ---
-name: ecosystem-task-closer
-description: "Close centralized ecosystem tasks after the user confirms the delivered work is correct. Use when the user says a task is completed, approved, validated, ready to close, or should be marked as done. Update repository-local human docs first, then mark task frontmatter and the ecosystem Task Status as done."
+name: workspace-task-closer
+description: "Close centralized workspace tasks after the user confirms the delivered work is correct. Use when the user says a task is completed, approved, validated, ready to close, or should be marked as done. Update repository-local human docs first, then mark task frontmatter and the workspace Task Status as done."
 ---
 
-# Ecosystem Task Closer
+# Workspace Task Closer
 
 ## Overview
 
-Use this skill when the user confirms that one or more ecosystem tasks now meet expectations and should be closed.
+Use this skill when the user confirms that one or more workspace tasks now meet expectations and should be closed.
 
 This skill is for final consolidation only. It writes stable human docs in the affected repositories and then marks the central task files as `done`.
 
@@ -24,11 +24,11 @@ Use this skill for requests like:
 
 ## Workflow
 
-1. Identify the target ecosystem and task ids from the user's message.
+1. Identify the target workspace and task ids from the user's message.
 2. Read:
-   - `ecosystems/<name>/ecosystem.config.json`
-   - `ecosystems/<name>/sdd/README.md`
-   - the selected files under `ecosystems/<name>/sdd/tasks/`
+   - `workspaces/<name>/workspace.config.json`
+   - `workspaces/<name>/sdd/README.md`
+   - the selected files under `workspaces/<name>/sdd/tasks/`
 3. Resolve each task's `repositories` and `docs_targets`.
 4. Read the current repository-local docs listed in `docs_targets`.
 5. Inspect the relevant code and recent task output only enough to write accurate final docs.
@@ -43,7 +43,7 @@ Use this skill for requests like:
    - Include `prHandoff.decision`.
    - Include `prHandoff.pullRequests` with `{ repository, url }` entries for every PR opened.
    - When GitHub metadata exists, the tool updates the GitHub issue closeout section and moves the Project item to `Done`.
-10. Confirm the ecosystem `sdd/README.md` Task Status entry for each closed task was updated by the tool.
+10. Confirm the workspace `sdd/README.md` Task Status entry for each closed task was updated by the tool.
 11. Reply with a short summary of docs updated, validations run, tasks closed, and any PR handoff performed or intentionally skipped.
 
 ## Docs Rules
@@ -52,7 +52,7 @@ Use this skill for requests like:
 - `docs_targets` use the format `repo-id:path/inside/repo.md`.
 - If a task has no `docs_targets`, infer the repository-local doc target from repo rules and code context, then add it to the task before closing.
 - If the correct doc target is unclear, inspect the repository docs index before choosing.
-- Do not create human docs inside `ecosystem-ai-runner`.
+- Do not create human docs inside `workspace-ai-runner`.
 - Keep docs factual and stable; describe current behavior, business rules, routes, contracts, module boundaries, and operational notes.
 
 ## Status Rules
@@ -68,7 +68,7 @@ When closing a task:
 
 - use MCP `set_task_status` instead of editing task status by hand when available
 - update YAML frontmatter from `status: open`, `implemented`, or `needs-rework` to `status: done`
-- update `Task Status` in `ecosystems/<name>/sdd/README.md`
+- update `Task Status` in `workspaces/<name>/sdd/README.md`
 - update the linked GitHub issue closeout section and move the Project item to `Done` when GitHub metadata exists
 - preserve task ids, titles, scopes, repositories, validation, and dependencies
 - keep `docs_targets` pointing to repository-local docs
