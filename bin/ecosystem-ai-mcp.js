@@ -174,10 +174,10 @@ const tools = [
         closeoutSummary: { type: 'string', description: 'Brief summary of what was done, added to the GitHub card when closing.' },
         prHandoff: {
           type: 'object',
-          description: 'Required when status is done. The agent must ask whether to skip PR handoff, use the current branch, or create a new branch before closing.',
+          description: 'Required when status is done. The agent must ask the user whether to skip PR, use existing PRs, or create new PRs automatically.',
           required: ['decision'],
           properties: {
-            decision: { type: 'string', enum: ['skip', 'current-branch', 'new-branch'] },
+            decision: { type: 'string', enum: ['skip', 'current-branch', 'new-branch', 'create'] },
             targetBranch: { type: 'string', description: 'PR target branch when PR handoff is selected.' },
             pullRequests: {
               type: 'array',
