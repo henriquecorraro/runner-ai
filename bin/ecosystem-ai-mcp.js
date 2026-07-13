@@ -20,7 +20,6 @@ const {
   setTaskBoardStatus,
   startTaskExecution,
   finishTaskExecution,
-  createScopeBranch,
 } = require('../lib/tasks');
 const { runWithRunner } = require('../lib/runner');
 const { launchParallel, getParallelStatus, listParallelRuns, MAX_CONCURRENCY } = require('../lib/parallel-runner');
@@ -225,13 +224,15 @@ const tools = [
   },
   {
     name: 'start_task_execution',
-    description: 'Deterministically start current-chat execution for one task by moving its GitHub Project item to In Progress before any implementation work.',
+    description: 'Deterministically start current-chat execution for one task. Creates a feature branch (feat/<scope>) in all affected repositories, checks out baseBranch, pulls latest, then creates the branch. Moves the GitHub Project item to In Progress.',
     inputSchema: {
       type: 'object',
       required: ['workspace', 'task'],
       properties: {
         workspace: { type: 'string' },
         task: { type: 'string', description: 'Task id, filename, or unique fragment.' },
+        branchName: { type: 'string', description: 'Explicit branch name. Default: feat/<scope-slug>.' },
+        baseBranch: { type: 'string', description: 'Base branch to create from. Default: main.' },
       },
     },
   },
@@ -245,21 +246,6 @@ const tools = [
         workspace: { type: 'string' },
         task: { type: 'string', description: 'Task id, filename, or unique fragment.' },
         skipReview: { type: 'boolean', description: 'Set true only after the review loop passed and the user confirmed. Moves the task to Testing.' },
-      },
-    },
-  },
-  {
-    name: 'create_scope_branch',
-    description: 'Create a git branch in all repositories affected by a scope or set of tasks. Checks out baseBranch (default: main), pulls latest, then creates the new branch. Use before starting task execution to isolate work.',
-    inputSchema: {
-      type: 'object',
-      required: ['workspace'],
-      properties: {
-        workspace: { type: 'string' },
-        scope: { type: 'string', description: 'Create branch for all repos affected by this scope.' },
-        taskIds: { type: 'array', items: { type: 'string' }, description: 'Alternative: resolve repos from specific task IDs.' },
-        branchName: { type: 'string', description: 'Explicit branch name. Default: feat/<scope-slug>.' },
-        baseBranch: { type: 'string', description: 'Base branch to create from. Default: main.' },
       },
     },
   },
@@ -496,7 +482,6 @@ function callTool(name, args = {}) {
     case 'set_task_board_status': return setTaskBoardStatus(args, getWorkspace);
     case 'start_task_execution': return startTaskExecution(args, getWorkspace);
     case 'finish_task_execution': return finishTaskExecution(args, getWorkspace);
-    case 'create_scope_branch': return createScopeBranch(args, getWorkspace);
     case 'run_with_runner': return runWithRunner(args, getWorkspace);
     case 'run_parallel': {
       if (args.userConfirmedRunner !== true) throw new Error('Parallel execution requires userConfirmedRunner: true.');
