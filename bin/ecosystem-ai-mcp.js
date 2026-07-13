@@ -236,13 +236,14 @@ const tools = [
   },
   {
     name: 'finish_task_execution',
-    description: 'Deterministically finish current-chat implementation for one task by moving its GitHub Project item to Testing after implementation work is complete.',
+    description: 'Deterministically finish current-chat implementation for one task. By default triggers a review loop: returns the task spec + git diff for comparison without moving to Testing. The agent must review, fix issues, and call again. Only moves to Testing when skipReview: true is passed after user confirmation.',
     inputSchema: {
       type: 'object',
       required: ['workspace', 'task'],
       properties: {
         workspace: { type: 'string' },
         task: { type: 'string', description: 'Task id, filename, or unique fragment.' },
+        skipReview: { type: 'boolean', description: 'Set true only after the review loop passed and the user confirmed. Moves the task to Testing.' },
       },
     },
   },
@@ -349,6 +350,7 @@ function getOperatingContext(args) {
       'Before create_workspace, ask for a GitHub Project URL unless the user explicitly confirms no Project is needed; then pass skipGithubProject: true.',
       'When creating tasks in a workspace with githubProject, create_task is all-or-fail: it preflights every linked repository, creates GitHub issues in every linked repository, assigns every issue to the authenticated user, adds the primary issue to the Project in Todo, and only then records the local task.',
       'For current-chat execution, use start_task_execution before implementation and finish_task_execution after implementation; these are required lifecycle gates.',
+      'finish_task_execution has a built-in review loop: without skipReview, it returns the task spec + git diff. The agent must compare spec vs implementation, fix bugs, and call finish again. Only pass skipReview: true after the review is clean AND the user confirms.',
       'For run_with_runner and run_parallel, every selected task card moves to In Progress before execution and Testing when that task succeeds.',
       'When the user validates and asks to document/close a task, ask whether to skip PR handoff, use the current branch, or create a new branch; then use set_task_status(status="done", userValidated=true) with prHandoff, closeoutSummary, and PR URLs so the GitHub issue is updated and the Project item is moved to Done.',
       'Use the current chat/agent for task execution by default.',
