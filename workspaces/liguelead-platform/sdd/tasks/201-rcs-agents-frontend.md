@@ -2,7 +2,7 @@
 id: rcs-agents-frontend
 title: "RCS Agents: frontend listing + multi-step registration form"
 scope: rcs-agents
-status: implemented
+status: done
 repositories:
   - platform-front
 validation:
@@ -23,7 +23,7 @@ github_issue_urls:
 github_project_item_id: 210029249
 github_project_item_node_id: PVTI_lADOBpMd-c4BapTczgyEysE
 github_project_item_url: "https://github.com/orgs/ligue-lead-tech/projects/6?pane=issue&itemId=210029249"
-github_project_status: Testing
+github_project_status: Done
 ---
 
 Create RCS Agents pages at `src/pages/RcsAgents/` with listing and multi-step form.

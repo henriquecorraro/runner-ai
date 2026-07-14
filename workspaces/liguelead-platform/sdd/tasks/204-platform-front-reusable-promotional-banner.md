@@ -2,7 +2,7 @@
 id: platform-front-reusable-promotional-banner
 title: Add reusable promotional banner dialog
 scope: platform-shell
-status: open
+status: done
 repositories:
   - platform-front
 validation:
@@ -18,7 +18,7 @@ github_issue_urls:
 github_project_item_id: 212063150
 github_project_item_node_id: PVTI_lADOBpMd-c4BapTczgyj064
 github_project_item_url: "https://github.com/orgs/ligue-lead-tech/projects/6?pane=issue&itemId=212063150"
-github_project_status: Testing
+github_project_status: Done
 ---
 
 ## Repository

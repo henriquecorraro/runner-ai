@@ -653,32 +653,32 @@ This bootstrap does not pre-create implementation tasks. Future work for this ec
 197. `done` `rcs-verification-dispatch`
      RCS as primary verification channel with SMS fallback
 
-198. `open` `rcs-agents-migration`
+198. `done` `rcs-agents-migration`
      RCS Agents: create database migration
 
-199. `open` `rcs-agents-backend-module`
+199. `done` `rcs-agents-backend-module`
      RCS Agents: backend module with CRUD + file upload
 
-200. `open` `rcs-agents-middleware-routes`
+200. `done` `rcs-agents-middleware-routes`
      RCS Agents: middleware proxy routes and contracts
 
-201. `implemented` `rcs-agents-frontend`
+201. `done` `rcs-agents-frontend`
      RCS Agents: frontend listing + multi-step registration form
 
-202. `open` `rcs-agents-frontend-ds-refactor`
+202. `done` `rcs-agents-frontend-ds-refactor`
      RCS Agents: refactor frontend to use Design System components
 
-203. `open` `simplify-rcs-agent-client-registration-fields`
+203. `done` `simplify-rcs-agent-client-registration-fields`
      Simplify RCS agent client registration fields
 
-204. `open` `platform-front-reusable-promotional-banner`
+204. `done` `platform-front-reusable-promotional-banner`
      Add reusable promotional banner dialog
 
-205. `open` `limit-rcs-enablement-request-per-client`
+205. `done` `limit-rcs-enablement-request-per-client`
      Limit RCS enablement requests to one per client
 
-206. `open` `allow-rcs-retry-after-rejection`
+206. `done` `allow-rcs-retry-after-rejection`
      Allow a new RCS request after rejection
 
-207. `open` `track-promotional-banner-engagement`
+207. `done` `track-promotional-banner-engagement`
      Track promotional banner engagement across legacy and new platforms

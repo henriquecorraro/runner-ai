@@ -2,7 +2,7 @@
 id: track-promotional-banner-engagement
 title: Track promotional banner engagement across legacy and new platforms
 scope: promotion-tracking
-status: open
+status: done
 repositories:
   - platform-api
   - middleware
@@ -28,7 +28,7 @@ github_issue_urls:
 github_project_item_id: 212126160
 github_project_item_node_id: PVTI_lADOBpMd-c4BapTczgykydA
 github_project_item_url: "https://github.com/orgs/ligue-lead-tech/projects/6?pane=issue&itemId=212126160"
-github_project_status: Testing
+github_project_status: Done
 ---
 
 ## Repositories

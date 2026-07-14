@@ -2,7 +2,7 @@
 id: rcs-agents-frontend-ds-refactor
 title: RCS Agents: refactor frontend to use Design System components
 scope: rcs-agents
-status: open
+status: done
 repositories:
   - platform-front
 validation:
@@ -24,7 +24,7 @@ github_issue_urls:
 github_project_item_id: 210045465
 github_project_item_node_id: PVTI_lADOBpMd-c4BapTczgyFChk
 github_project_item_url: "https://github.com/orgs/ligue-lead-tech/projects/6?pane=issue&itemId=210045465"
-github_project_status: Testing
+github_project_status: Done
 ---
 
 Refactor `src/pages/RcsAgents/` to use Design System components and match platform header/layout patterns.

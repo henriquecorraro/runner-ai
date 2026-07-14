@@ -2,7 +2,7 @@
 id: simplify-rcs-agent-client-registration-fields
 title: Simplify RCS agent client registration fields
 scope: rcs-agents
-status: open
+status: done
 repositories:
   - platform-api
   - middleware
@@ -28,7 +28,7 @@ github_issue_urls:
 github_project_item_id: 211657935
 github_project_item_node_id: PVTI_lADOBpMd-c4BapTczgydpM8
 github_project_item_url: "https://github.com/orgs/ligue-lead-tech/projects/6?pane=issue&itemId=211657935"
-github_project_status: Testing
+github_project_status: Done
 ---
 
 ## Repositories

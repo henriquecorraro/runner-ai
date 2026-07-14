@@ -2,7 +2,7 @@
 id: rcs-agents-middleware-routes
 title: RCS Agents: middleware proxy routes and contracts
 scope: rcs-agents
-status: open
+status: done
 repositories:
   - middleware
 validation:
@@ -23,7 +23,7 @@ github_issue_urls:
 github_project_item_id: 210018553
 github_project_item_node_id: PVTI_lADOBpMd-c4BapTczgyEoPk
 github_project_item_url: "https://github.com/orgs/ligue-lead-tech/projects/6?pane=issue&itemId=210018553"
-github_project_status: Testing
+github_project_status: Done
 ---
 
 Create domain `src/domains/rcs-agents/` with `routes.ts` and `contracts.ts`.

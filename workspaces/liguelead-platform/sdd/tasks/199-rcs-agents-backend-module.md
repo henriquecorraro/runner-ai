@@ -2,7 +2,7 @@
 id: rcs-agents-backend-module
 title: "RCS Agents: backend module with CRUD + file upload"
 scope: rcs-agents
-status: open
+status: done
 repositories:
   - platform-api
 validation:
@@ -23,7 +23,7 @@ github_issue_urls:
 github_project_item_id: 210018434
 github_project_item_node_id: PVTI_lADOBpMd-c4BapTczgyEoII
 github_project_item_url: "https://github.com/orgs/ligue-lead-tech/projects/6?pane=issue&itemId=210018434"
-github_project_status: Testing
+github_project_status: Done
 ---
 
 Create module `src/modules/rcs-agents/` following existing module structure.

@@ -2,7 +2,7 @@
 id: limit-rcs-enablement-request-per-client
 title: Limit RCS enablement requests to one per client
 scope: rcs-agents
-status: open
+status: done
 repositories:
   - platform-api
   - platform-front
@@ -23,7 +23,7 @@ github_issue_urls:
 github_project_item_id: 212065959
 github_project_item_node_id: PVTI_lADOBpMd-c4BapTczgyj3qc
 github_project_item_url: "https://github.com/orgs/ligue-lead-tech/projects/6?pane=issue&itemId=212065959"
-github_project_status: Testing
+github_project_status: Done
 ---
 
 ## Repositories

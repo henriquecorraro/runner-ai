@@ -2,7 +2,7 @@
 id: allow-rcs-retry-after-rejection
 title: Allow a new RCS request after rejection
 scope: rcs-agents
-status: open
+status: done
 repositories:
   - platform-api
   - platform-front
@@ -23,7 +23,7 @@ github_issue_urls:
 github_project_item_id: 212096591
 github_project_item_node_id: PVTI_lADOBpMd-c4BapTczgykVk8
 github_project_item_url: "https://github.com/orgs/ligue-lead-tech/projects/6?pane=issue&itemId=212096591"
-github_project_status: Testing
+github_project_status: Done
 ---
 
 ## Repositories

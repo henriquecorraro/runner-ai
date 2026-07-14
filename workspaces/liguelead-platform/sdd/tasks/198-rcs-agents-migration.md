@@ -2,7 +2,7 @@
 id: rcs-agents-migration
 title: RCS Agents: create database migration
 scope: rcs-agents
-status: open
+status: done
 repositories:
   - platform-api
 validation:
@@ -20,7 +20,7 @@ github_issue_urls:
 github_project_item_id: 210018292
 github_project_item_node_id: PVTI_lADOBpMd-c4BapTczgyEn_Q
 github_project_item_url: "https://github.com/orgs/ligue-lead-tech/projects/6?pane=issue&itemId=210018292"
-github_project_status: Testing
+github_project_status: Done
 ---
 
 Create migration `migrations/028-create-rcs-agents.sql`.
