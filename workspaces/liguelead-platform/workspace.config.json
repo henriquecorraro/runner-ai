@@ -4,7 +4,11 @@
   "sddRoot": "sdd",
   "githubProject": {
     "title": "platform-v2",
-    "url": "https://github.com/orgs/ligue-lead-tech/projects/6"
+    "url": "https://github.com/orgs/ligue-lead-tech/projects/6",
+    "dateFields": {
+      "createdAt": { "id": "PVTF_lADOBpMd-c4BapTczhX22QM", "name": "Criado em" },
+      "closedAt": { "id": "PVTF_lADOBpMd-c4BapTczhX22RU", "name": "Finalizado em" }
+    }
   },
   "defaultAgent": "codex",
   "agents": {
