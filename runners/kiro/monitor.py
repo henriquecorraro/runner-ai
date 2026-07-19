@@ -29,7 +29,8 @@ STATUS_ICON = {
 
 
 def build_table(run: Run) -> Table:
-    table = Table(title=f"Kiro Runner — {run.workspace} — {run.id}", expand=True)
+    agent_name = run.agent.name if run.agent else "unknown"
+    table = Table(title=f"Workspace Runner ({agent_name}) — {run.workspace} — {run.id}", expand=True)
     table.add_column("Task", style="bold", ratio=3)
     table.add_column("Status", justify="center", ratio=1)
     table.add_column("PID", justify="right", ratio=1)

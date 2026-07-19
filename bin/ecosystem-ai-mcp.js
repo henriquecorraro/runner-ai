@@ -20,11 +20,13 @@ const {
   setTaskBoardStatus,
   startTaskExecution,
   finishTaskExecution,
+  loadTaskContext,
 } = require('../lib/tasks');
 const { runWithRunner } = require('../lib/runner');
 const { launchParallel, getParallelStatus, listParallelRuns, MAX_CONCURRENCY } = require('../lib/parallel-runner');
 const { getMyActivity } = require('../lib/github-activity');
 const { createGitHubProject } = require('../lib/github-project-create');
+const { reconcile } = require('../lib/reconcile');
 
 // --- JSON-RPC helpers ---
 
@@ -68,7 +70,7 @@ function resolveWsArg(args) {
 const tools = [
   {
     name: 'get_operating_context',
-    description: 'Return the workspace-ai-runner operating rules. Use this before planning or executing workspace tasks.',
+    description: 'Return the ws-runner operating rules. Use this before planning or executing workspace tasks.',
     inputSchema: { type: 'object', properties: { workspace: { type: 'string', description: 'Optional workspace name.' } } },
   },
   {
@@ -154,10 +156,10 @@ const tools = [
   },
   {
     name: 'create_task',
-    description: 'Create a centralized task file. Deterministic GitHub sync is all-or-fail: when githubProject is configured, preflight every linked repository, create GitHub issues in all linked repositories, assign every issue to the authenticated user, add the primary issue to the Project, and move it to Todo before recording the local task. Titles and body must be in English. Body must be terse machine-readable specs for AI agent execution: declarative, structured, zero prose. Follow taskWritingRules from get_operating_context.',
+    description: 'Create a centralized task file. Deterministic GitHub sync is all-or-fail: when githubProject is configured, preflight every linked repository, create GitHub issues in all linked repositories, assign every issue to the authenticated user, add the primary issue to the Project, and move it to Todo before recording the local task. Titles and body must be in English. Body must be terse machine-readable specs for AI agent execution: declarative, structured, zero prose. Follow taskWritingRules from get_operating_context. The intent field is optional human-readable context (the WHY behind the task) that appears only on the GitHub card, never in the local task file.',
     inputSchema: {
       type: 'object', required: ['workspace', 'title', 'repositories', 'body'],
-      properties: { workspace: { type: 'string' }, id: { type: 'string' }, title: { type: 'string' }, scope: { type: 'string' }, repositories: { type: 'array', items: { type: 'string' } }, validation: { type: 'array', items: { type: 'string' } }, docsTargets: { type: 'array', items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'string' } }, body: { type: 'string' } },
+      properties: { workspace: { type: 'string' }, id: { type: 'string' }, title: { type: 'string' }, scope: { type: 'string' }, repositories: { type: 'array', items: { type: 'string' } }, validation: { type: 'array', items: { type: 'string' } }, docsTargets: { type: 'array', items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'string' } }, body: { type: 'string' }, intent: { type: 'string', description: 'Human-readable context for the GitHub card: the WHY behind this task, how the decision was reached, the conversation summary. Goes only to the card, never to the local task file.' }, context: { type: 'string', description: 'Pre-computed execution context snapshot for the executor agent. Include: relevant file contents, type signatures, current state of components, architectural decisions, and pitfalls discussed. Saved as .context.md sibling file. The executor loads this automatically via get_task instead of re-reading the codebase from scratch — saves tokens and execution time.' } },
     },
   },
   {
@@ -259,13 +261,15 @@ const tools = [
   },
   {
     name: 'run_parallel',
-    description: `Launch workspace tasks in parallel (up to ${MAX_CONCURRENCY} physical cores). Each task runs in its own process/core, moves its GitHub Project card to In Progress when the worker starts, and moves it to Testing after successful completion. Returns a runId to monitor progress.`,
+    description: `Launch workspace tasks in parallel (up to ${MAX_CONCURRENCY} physical cores) using the Python async runner. The agent command is read from the workspace config — works with any agent (kiro, codex, claude, etc). Each task runs in its own process, moves its GitHub Project card to In Progress when the worker starts, and moves it to Testing after successful completion. Returns a runId to monitor progress.`,
     inputSchema: {
-      type: 'object', required: ['workspace', 'taskIds', 'userConfirmedRunner'],
+      type: 'object', required: ['workspace', 'userConfirmedRunner'],
       properties: {
         workspace: { type: 'string' },
-        taskIds: { type: 'array', items: { type: 'string' }, description: 'Task IDs to execute in parallel.' },
-        agent: { type: 'string', description: 'Agent name (default: workspace default).' },
+        taskIds: { type: 'array', items: { type: 'string' }, description: 'Task IDs to execute. If omitted, use scope or openTasks.' },
+        scope: { type: 'string', description: 'Run all actionable tasks in this scope.' },
+        openTasks: { type: 'boolean', description: 'Run all open/needs-rework tasks.' },
+        agent: { type: 'string', description: 'Agent name override (must exist in workspace agents config). Default: workspace defaultAgent.' },
         concurrency: { type: 'number', description: `Max parallel workers. Default: ${MAX_CONCURRENCY} (physical cores).` },
         userConfirmedRunner: { type: 'boolean' },
       },
@@ -288,23 +292,6 @@ const tools = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'run_kiro_parallel',
-    description: `Launch workspace tasks in parallel using kiro-cli agents (up to ${MAX_CONCURRENCY} cores). Each task runs in its own kiro-cli process. Use when user asks to run tasks with kiro runner. Returns a runId to monitor with parallel_status.`,
-    inputSchema: {
-      type: 'object', required: ['workspace', 'userConfirmedRunner'],
-      properties: {
-        workspace: { type: 'string' },
-        taskIds: { type: 'array', items: { type: 'string' }, description: 'Task IDs to execute. If omitted with openTasks=true, runs all actionable tasks.' },
-        scope: { type: 'string', description: 'Run all actionable tasks in this scope.' },
-        openTasks: { type: 'boolean', description: 'Run all open/needs-rework tasks.' },
-        concurrency: { type: 'number', description: `Max parallel workers. Default: ${MAX_CONCURRENCY}.` },
-        model: { type: 'string', description: 'Model override (e.g. claude-opus-4).' },
-        effort: { type: 'string', description: 'Effort level: low, medium, high, xhigh, max. Default: max.' },
-        userConfirmedRunner: { type: 'boolean' },
-      },
-    },
-  },
-  {
     name: 'get_my_activity',
     description: 'Fetch the authenticated GitHub user\'s activity in a workspace\'s GitHub Project, filtered by date range. Use when the user asks what they did on a specific day or period.',
     inputSchema: {
@@ -324,6 +311,18 @@ const tools = [
       properties: {
         workspace: { type: 'string' },
         title: { type: 'string', description: 'Title for the new GitHub Project.' },
+      },
+    },
+  },
+  {
+    name: 'reconcile_workspace',
+    description: 'Lightweight bidirectional reconcile between local task files and their GitHub Project cards. Detects drift (status mismatch, externally closed issues, stale frontmatter) and optionally fixes it. Use dryRun: true (default) to preview, dryRun: false to fix.',
+    inputSchema: {
+      type: 'object', required: ['workspace'],
+      properties: {
+        workspace: { type: 'string' },
+        dryRun: { type: 'boolean', description: 'If true (default), only report drift without fixing.' },
+        direction: { type: 'string', enum: ['both', 'local-to-github', 'github-to-local'], description: 'Sync direction. Default: both.' },
       },
     },
   },
@@ -359,6 +358,8 @@ function getOperatingContext(args) {
       'Resolve contextual task references against the current conversation first.',
       'Use the runner only when the user explicitly asks.',
       'Do not mark tasks done until the user confirms validation.',
+      'When creating tasks, always generate an intent field: a human-readable summary of WHY this task exists, the reasoning process, and how the decision was reached in the conversation. The intent goes only to the GitHub card — the local task file stays machine-readable with zero prose.',
+      'When creating tasks, always generate a context field: a pre-computed knowledge snapshot that the executor agent will need. Include relevant file contents read during planning, type signatures, current component state, architectural constraints, and pitfalls discussed. This is saved as a .context.md sibling file and loaded automatically by get_task — it prevents the executor from wasting tokens re-reading the same files.',
     ],
     taskWritingRules: [
       'Tasks are consumed EXCLUSIVELY by AI agents. Never write for humans.',
@@ -385,13 +386,10 @@ function getOperatingContext(args) {
 
 // --- Kiro parallel runner ---
 
-const kiroRuns = new Map();
+const parallelRuns = new Map();
 
-function launchKiroParallel(args) {
-  if (args.userConfirmedRunner !== true) throw new Error('Kiro runner requires userConfirmedRunner: true.');
-  const ws = getWorkspace(resolveWsArg(args));
-
-  const runId = `kiro-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+function launchGenericParallel({ ws, args }) {
+  const runId = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const pyArgs = ['-m', 'runners.kiro', '--config', ws.configPath, '--run-id', runId, '--no-tui'];
 
   if (args.taskIds && args.taskIds.length > 0) {
@@ -406,11 +404,8 @@ function launchKiroParallel(args) {
     throw new Error('Provide taskIds, scope, or openTasks: true.');
   }
 
+  if (args.agent) pyArgs.push('--agent', ensureString(args.agent, 'agent'));
   if (args.concurrency) pyArgs.push('--concurrency', String(args.concurrency));
-
-  const env = { ...process.env };
-  if (args.model) env.KIRO_MODEL = args.model;
-  if (args.effort) env.KIRO_EFFORT = args.effort;
 
   const logsDir = path.join(ROOT, 'workspaces', ws.directoryName, 'runs', runId);
   fs.mkdirSync(logsDir, { recursive: true });
@@ -418,10 +413,11 @@ function launchKiroParallel(args) {
   const logStream = fs.createWriteStream(orchestratorLog, { flags: 'w' });
 
   const { spawn } = require('node:child_process');
-  const child = spawn('python3', pyArgs, { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn('python3', pyArgs, { cwd: ROOT, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
 
-  const state = { runId, workspace: ws.directoryName, pid: child.pid, status: 'running', startedAt: new Date().toISOString(), finishedAt: null, exitCode: null, lastLines: [], logsDir };
-  kiroRuns.set(runId, state);
+  const agentName = args.agent || ws.defaultAgent || 'default';
+  const state = { runId, workspace: ws.directoryName, agent: agentName, pid: child.pid, status: 'running', startedAt: new Date().toISOString(), finishedAt: null, exitCode: null, lastLines: [], logsDir };
+  parallelRuns.set(runId, state);
 
   child.stdout.on('data', (chunk) => {
     logStream.write(chunk);
@@ -443,7 +439,7 @@ function launchKiroParallel(args) {
     state.finishedAt = new Date().toISOString();
   });
 
-  return { runId, workspace: ws.directoryName, pid: child.pid, logsDir, message: `Kiro runner started. Monitor with parallel_status(runId="${runId}") or check ${logsDir}` };
+  return { runId, workspace: ws.directoryName, agent: agentName, pid: child.pid, logsDir, message: `Runner started (agent: ${agentName}). Monitor with parallel_status(runId="${runId}").` };
 }
 
 // --- Tool call dispatch ---
@@ -463,8 +459,9 @@ function callTool(name, args = {}) {
     case 'get_task': {
       const ws = getWorkspace(resolveWsArg(args));
       const task = resolveTask(ws, args.task);
+      const context = loadTaskContext(task);
       rememberActiveTasks(ws.directoryName, [task.id], 'loaded-by-mcp');
-      return { workspace: ws.directoryName, task };
+      return { workspace: ws.directoryName, task, ...(context.hasContext ? { executionContext: context.content } : {}) };
     }
     case 'get_active_tasks': {
       const ws = getWorkspace(resolveWsArg(args));
@@ -486,28 +483,27 @@ function callTool(name, args = {}) {
     case 'run_parallel': {
       if (args.userConfirmedRunner !== true) throw new Error('Parallel execution requires userConfirmedRunner: true.');
       const ws = getWorkspace(resolveWsArg(args));
-      const taskIds = ensureStringArray(args.taskIds, 'taskIds', true);
-      return launchParallel({ ws, taskIds, agent: args.agent, concurrency: args.concurrency });
+      return launchGenericParallel({ ws, args });
     }
     case 'parallel_status': {
-      if (kiroRuns.has(args.runId)) {
-        const kr = kiroRuns.get(args.runId);
-        const result = { ...kr };
-        const logPath = path.join(kr.logsDir, 'orchestrator.log');
-        if (fs.existsSync(logPath)) {
-          const content = fs.readFileSync(logPath, 'utf8');
-          result.tailLog = content.split('\n').slice(-20).join('\n');
-        }
-        return result;
+      const run = parallelRuns.get(args.runId);
+      if (!run) {
+        // Try Node parallel runner (legacy)
+        return getParallelStatus(args.runId, args.taskId);
       }
-      return getParallelStatus(args.runId, args.taskId);
+      const result = { ...run };
+      const logPath = path.join(run.logsDir, 'orchestrator.log');
+      if (fs.existsSync(logPath)) {
+        const content = fs.readFileSync(logPath, 'utf8');
+        result.tailLog = content.split('\n').slice(-20).join('\n');
+      }
+      return result;
     }
     case 'list_parallel_runs': {
-      const codexRuns = listParallelRuns();
-      const kiro = [...kiroRuns.values()].map((r) => ({ runId: r.runId, workspace: r.workspace, type: 'kiro', status: r.status, pid: r.pid, startedAt: r.startedAt }));
-      return [...codexRuns.map((r) => ({ ...r, type: 'codex' })), ...kiro];
+      const nodeRuns = listParallelRuns();
+      const pyRuns = [...parallelRuns.values()].map((r) => ({ runId: r.runId, workspace: r.workspace, agent: r.agent, status: r.status, pid: r.pid, startedAt: r.startedAt }));
+      return [...nodeRuns.map((r) => ({ ...r, type: 'legacy-node' })), ...pyRuns];
     }
-    case 'run_kiro_parallel': return launchKiroParallel(args);
     case 'get_my_activity': {
       const ws = getWorkspace(resolveWsArg(args));
       if (!ws.githubProject) throw new Error(`Workspace "${ws.directoryName}" does not have githubProject configured.`);
@@ -518,6 +514,10 @@ function callTool(name, args = {}) {
       const ws = getWorkspace(resolveWsArg(args));
       if (ws.githubProject) throw new Error(`Workspace "${ws.directoryName}" already has githubProject configured: ${ws.githubProject.url}`);
       return createGitHubProject({ ws, title: ensureString(args.title, 'title') });
+    }
+    case 'reconcile_workspace': {
+      const ws = getWorkspace(resolveWsArg(args));
+      return reconcile(ws, { dryRun: args.dryRun !== false, direction: args.direction || 'both' });
     }
     default: throw new Error(`Unknown tool: ${name}`);
   }
@@ -530,7 +530,7 @@ async function handleMessage(message) {
     return jsonResult(message.id, {
       protocolVersion: '2024-11-05',
       capabilities: { tools: {} },
-      serverInfo: { name: 'workspace-ai-runner', version: '0.3.0' },
+      serverInfo: { name: 'ws-runner', version: '0.2.0' },
     });
   }
   if (message.method === 'notifications/initialized') return null;

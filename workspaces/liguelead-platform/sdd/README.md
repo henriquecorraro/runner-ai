@@ -682,3 +682,90 @@ This bootstrap does not pre-create implementation tasks. Future work for this ec
 
 207. `done` `track-promotional-banner-engagement`
      Track promotional banner engagement across legacy and new platforms
+
+208. `done` `tour-setup`
+     Guided tour: feature scaffold and platform-level tour
+
+209. `done` `tour-leads`
+     Guided tour: Leads page
+
+210. `done` `tour-tags`
+     Guided tour: Tags and Tag Leads pages
+
+211. `done` `tour-uploads`
+     Guided tour: Uploads page
+
+212. `done` `tour-campaigns`
+     Guided tour: Campaigns page
+
+213. `done` `tour-audios-sms`
+     Guided tour: Audios and SMS pages
+
+214. `done` `tour-broadcasts`
+     Guided tour: Broadcasts pages (actions, schedules, form)
+
+215. `done` `tour-shortener`
+     Guided tour: Link Shortener page
+
+216. `done` `tour-integrations`
+     Guided tour: Integrations and Webhooks pages
+
+217. `done` `tour-rcs`
+     Guided tour: RCS Agents pages
+
+218. `done` `tour-credits`
+     Guided tour: Credits, Purchase, and History pages
+
+219. `done` `tour-settings`
+     Guided tour: Settings page
+
+220. `done` `tour-rename-broadcast-template`
+     Guided tour: rename broadcast to template, agendamentos to historico
+
+221. `done` `tour-i18n`
+     Guided tour: internationalize all tour step texts (pt-BR, en, es-ES)
+
+222. `done` `client-dashboard-and-template-page-ux-polish`
+     Polish Client Dashboard And Template Empty State
+
+223. `done` `standardize-inline-form-error-alerts`
+     Standardize Inline Form Error Alerts
+
+224. `done` `broadcast-template-content-reference-integrity`
+     Enforce Broadcast Template Content Reference Integrity
+
+225. `done` `legacy-broadcast-template-backfill-preview`
+     Preview Legacy Content To Broadcast Template Backfill
+
+226. `done` `legacy-broadcast-template-backfill-materialize`
+     Materialize Broadcast Templates From Recent Legacy Content
+
+227. `done` `legacy-broadcast-template-backfill-link-schedules`
+     Link Last-Year Legacy Schedules To Materialized Broadcast Templates
+
+228. `done` `broadcast-template-content-creation-contract`
+     Create Broadcast Template And Content As One Idempotent Operation
+
+229. `done` `broadcast-template-inline-content-authoring`
+     Unify Template And Sending Content Authoring In One Wizard
+
+230. `done` `broadcast-template-navigation-consolidation`
+     Consolidate Audio And SMS Navigation Into Templates
+
+231. `done` `broadcast-template-unification-rollout-runbook`
+     Validate And Roll Out Unified Broadcast Template Journey
+
+232. `done` `broadcast-template-customer-journey-cutover`
+     Cut Over Customer Content Creation To Unified Templates
+
+233. `done` `broadcast-create-send-from-template`
+     Create Send Directly From A Filtered Broadcast Template
+
+234. `done` `broadcast-create-send-sidebar-active-state`
+     Fix Create Send Sidebar Active State
+
+235. `done` `mp-webhook-middleware-route`
+     Add MercadoPago webhook proxy route to middleware
+
+236. `done` `credit-orders-persist-user-id`
+     Persist userId on payment creation for credit orders

@@ -14,6 +14,17 @@ class TaskStatus(str, Enum):
 
 
 @dataclass
+class AgentConfig:
+    """Agent command definition from workspace config."""
+    name: str
+    command: str
+    args: list[str] = field(default_factory=list)
+    type: Optional[str] = None
+    model: Optional[str] = None
+    env: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
 class GitHubProject:
     """GitHub Project V2 metadata from workspace config."""
     url: str
@@ -59,6 +70,18 @@ class WorkspaceConfig:
     skills_dir: str
     repositories: list[Repository] = field(default_factory=list)
     github_project: Optional[GitHubProject] = None
+    default_agent: str = "codex"
+    agents: dict[str, AgentConfig] = field(default_factory=dict)
+
+    def resolve_agent(self, override: Optional[str] = None) -> AgentConfig:
+        """Resolve which agent to use. Override > defaultAgent > first available."""
+        name = override or self.default_agent
+        if name in self.agents:
+            return self.agents[name]
+        if self.agents:
+            return next(iter(self.agents.values()))
+        # Fallback: construct from name
+        return AgentConfig(name=name, command=name, args=[])
 
 
 @dataclass
@@ -81,6 +104,7 @@ class Run:
     id: str
     workspace: str
     concurrency: int
+    agent: Optional[AgentConfig] = None
     tasks: dict[str, TaskRun] = field(default_factory=dict)
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None

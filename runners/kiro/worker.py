@@ -1,30 +1,16 @@
-"""Async worker: spawns one kiro-cli chat process per task."""
+"""Async worker: spawns one agent process per task using workspace agent config."""
 from __future__ import annotations
 
 import asyncio
 import json
 import os
 import shutil
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from .models import WorkspaceConfig, Repository, Run, TaskDef, TaskRun, TaskStatus
+from .models import AgentConfig, WorkspaceConfig, Repository, Run, TaskDef, TaskRun, TaskStatus
 from .board import move_task_card
-
-KIRO_CLI = os.environ.get("KIRO_CLI", "kiro-cli")
-KIRO_MODEL = os.environ.get("KIRO_MODEL", "")
-KIRO_EFFORT = os.environ.get("KIRO_EFFORT", "high")
-
-# Fallback chain: try best model first, degrade if unavailable
-MODEL_FALLBACK_CHAIN = [
-    "claude-opus-4.6",
-    "claude-sonnet-4.6",
-    "claude-opus-4.5",
-    "claude-sonnet-4.5",
-    "claude-sonnet-4",
-]
 
 
 def _slugify(s: str) -> str:
@@ -32,49 +18,25 @@ def _slugify(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
 
-_resolved_model: Optional[str] = None
-
-
-def resolve_model() -> str:
-    """Resolve the best available model, caching the result."""
-    global _resolved_model
-    if _resolved_model is not None:
-        return _resolved_model
-
-    # If user set explicit model, use it
-    if KIRO_MODEL:
-        _resolved_model = KIRO_MODEL
-        return _resolved_model
-
-    # Query available models
-    import subprocess, json as _json
-    try:
-        result = subprocess.run(
-            [KIRO_CLI, "chat", "--list-models", "--format", "json"],
-            capture_output=True, text=True, timeout=15,
-        )
-        if result.returncode == 0:
-            data = _json.loads(result.stdout)
-            available = {m["model_id"] for m in data.get("models", [])}
-            for candidate in MODEL_FALLBACK_CHAIN:
-                if candidate in available:
-                    _resolved_model = candidate
-                    return _resolved_model
-    except Exception:
-        pass
-
-    # Fallback to first in chain (let kiro-cli error if truly unavailable)
-    _resolved_model = MODEL_FALLBACK_CHAIN[0]
-    return _resolved_model
-
-
 def _repo_by_id(eco: WorkspaceConfig) -> dict[str, Repository]:
     return {r.id: r for r in eco.repositories}
 
 
+def _load_context_snapshot(task: TaskDef) -> Optional[str]:
+    """Load the .context.md sibling file if it exists."""
+    context_path = task.file_path.replace(".md", ".context.md")
+    if os.path.exists(context_path):
+        content = Path(context_path).read_text().strip()
+        if content:
+            return content
+    return None
+
+
 def build_prompt(task: TaskDef, eco: WorkspaceConfig, output_file: str) -> str:
-    """Build the full prompt for kiro, matching JS runner format."""
+    """Build the full prompt, agent-agnostic."""
     repos = _repo_by_id(eco)
+    context_content = _load_context_snapshot(task)
+
     repo_sections = []
     for repo_id in task.repositories:
         repo = repos[repo_id]
@@ -106,12 +68,21 @@ Task status: {task.status}
         repo_sections.append(section)
 
     skills_section = f"""Skill operating instructions:
-- ENGLISH FIRST for workspace SDD artifacts: task files, titles, body text, textual frontmatter, Task Status entries, SDD README updates, run prompts, and output summaries must be written in English.
+- ENGLISH FIRST for workspace SDD artifacts.
 - Before editing code, read and follow the umbrella skill when it exists:
   - {eco.skills_dir}/workspace-operating-mode/SKILL.md (global)
   - {eco.skills_dir}/workspace-task-executor/SKILL.md (execution)
 - If workspace-local skills exist in {eco.skills_dir}, inspect and follow them.
 - If a listed skill path is missing, continue with the instructions already present in this prompt."""
+
+    context_block = ""
+    if context_content:
+        context_block = f"""Pre-computed execution context (read this first — saves you from re-reading files):
+
+{context_content}
+
+---
+"""
 
     return f"""You are running one Workspace AI Runner task for a centralized workspace SDD.
 
@@ -121,7 +92,7 @@ Title: {task.title}
 
 {skills_section}
 
-Execution goals:
+{context_block}Execution goals:
 - Execute the task below completely.
 - Keep all centralized workspace SDD updates and the mandatory output file in English.
 - Run the narrowest useful validation in each touched repository.
@@ -157,8 +128,11 @@ def create_stage_dir(eco: WorkspaceConfig, run_id: str, task: TaskDef, batch_ind
     stage_name = f"{str(batch_index + 1).zfill(2)}-{_slugify(task.id)}"
     stage_dir = os.path.join(eco.history_root, run_id, stage_name)
     os.makedirs(os.path.join(stage_dir, "tasks"), exist_ok=True)
-    # Snapshot the task file
     shutil.copy2(task.file_path, os.path.join(stage_dir, "tasks", task.file_name))
+    # Also copy context snapshot if exists
+    context_path = task.file_path.replace(".md", ".context.md")
+    if os.path.exists(context_path):
+        shutil.copy2(context_path, os.path.join(stage_dir, "tasks", os.path.basename(context_path)))
     return stage_dir
 
 
@@ -168,11 +142,11 @@ def _write_json(path: str, data: dict):
     os.rename(tmp, path)
 
 
-def _build_metadata(eco: WorkspaceConfig, run_id: str, task: TaskDef, stage_dir: str,
+def _build_metadata(eco: WorkspaceConfig, agent: AgentConfig, run_id: str, task: TaskDef, stage_dir: str,
                     status: str, started_at=None, finished_at=None, exit_code=None, failure=None):
     return {
         "workspace": eco.name,
-        "agent": {"name": "kiro", "type": "kiro", "command": KIRO_CLI},
+        "agent": {"name": agent.name, "type": agent.type or agent.name, "command": agent.command},
         "runId": run_id,
         "status": status,
         "mode": "centralized-workspace",
@@ -185,15 +159,42 @@ def _build_metadata(eco: WorkspaceConfig, run_id: str, task: TaskDef, stage_dir:
         "files": {
             "prompt": os.path.join(stage_dir, "prompt.md"),
             "output": os.path.join(stage_dir, "output.md"),
-            "log": os.path.join(stage_dir, "kiro.log"),
+            "log": os.path.join(stage_dir, "agent.log"),
             "summary": os.path.join(stage_dir, "summary.json"),
             "tasks": os.path.join(stage_dir, "tasks"),
         },
     }
 
 
-async def run_task(task_run: TaskRun, eco: WorkspaceConfig, run_id: str, batch_index: int) -> None:
-    """Execute a single task via kiro-cli chat."""
+def build_agent_command(agent: AgentConfig, prompt_instruction: str) -> tuple[str, list[str]]:
+    """Build the command and args to spawn the agent.
+
+    Convention: the prompt is always the last positional argument after the configured args.
+    If the agent has a model configured, inject --model before the prompt.
+    All known agent CLIs (kiro-cli, codex, claude) accept this.
+    """
+    args = list(agent.args)
+    if agent.model:
+        args.extend(["--model", agent.model])
+    args.append(prompt_instruction)
+    return agent.command, args
+
+
+def build_agent_env(agent: AgentConfig) -> dict[str, str]:
+    """Build environment variables for the agent process."""
+    env = {**os.environ}
+    # Inject agent-specific env vars from config
+    if agent.env:
+        env.update(agent.env)
+    # Also set model as env var for agents that read it from env
+    if agent.model:
+        env.setdefault("KIRO_MODEL", agent.model)
+        env.setdefault("ANTHROPIC_MODEL", agent.model)
+    return env
+
+
+async def run_task(task_run: TaskRun, eco: WorkspaceConfig, agent: AgentConfig, run_id: str, batch_index: int) -> None:
+    """Execute a single task by spawning the configured agent."""
     task = task_run.task
     stage_dir = create_stage_dir(eco, run_id, task, batch_index)
     task_run.stage_dir = stage_dir
@@ -208,34 +209,32 @@ async def run_task(task_run: TaskRun, eco: WorkspaceConfig, run_id: str, batch_i
     repos = _repo_by_id(eco)
     cwd = repos[task.repositories[0]].root if task.repositories else eco.config_dir
 
-    # Build kiro-cli args
-    model = resolve_model()
-    args = ["chat", "--no-interactive", "--trust-all-tools"]
-    args.extend(["--model", model])
-    if KIRO_EFFORT:
-        args.extend(["--effort", KIRO_EFFORT])
-    args.append(f"Read and execute the complete Workspace AI Runner prompt from {os.path.join(stage_dir, 'prompt.md')}. Follow it exactly, including writing the mandatory output file.")
+    # Build agent command from workspace config
+    prompt_instruction = f"Read and execute the complete Workspace AI Runner prompt from {os.path.join(stage_dir, 'prompt.md')}. Follow it exactly, including writing the mandatory output file."
+    command, args = build_agent_command(agent, prompt_instruction)
+    env = build_agent_env(agent)
 
     # Write initial metadata
     started_at = datetime.now(timezone.utc).isoformat()
     task_run.started_at = datetime.now(timezone.utc)
     task_run.status = TaskStatus.RUNNING
     _write_json(os.path.join(stage_dir, "metadata.json"),
-                _build_metadata(eco, run_id, task, stage_dir, "running", started_at=started_at))
+                _build_metadata(eco, agent, run_id, task, stage_dir, "running", started_at=started_at))
 
     # Move card to In Progress
     move_task_card(eco, task, "in-progress")
 
     # Spawn process
-    log_path = os.path.join(stage_dir, "kiro.log")
+    log_path = os.path.join(stage_dir, "agent.log")
     log_file = open(log_path, "w")
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            KIRO_CLI, *args,
+            command, *args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             cwd=cwd,
+            env=env,
         )
         task_run.pid = proc.pid
 
@@ -269,11 +268,11 @@ async def run_task(task_run: TaskRun, eco: WorkspaceConfig, run_id: str, batch_i
     if exit_code == 0:
         move_task_card(eco, task, "testing")
 
-    failure = None if exit_code == 0 else f"kiro failed for task \"{task.id}\" with exit code {exit_code}."
+    failure = None if exit_code == 0 else f"Agent failed for task \"{task.id}\" with exit code {exit_code}."
     status_str = "success" if exit_code == 0 else "failed"
 
     _write_json(os.path.join(stage_dir, "metadata.json"),
-                _build_metadata(eco, run_id, task, stage_dir, status_str,
+                _build_metadata(eco, agent, run_id, task, stage_dir, status_str,
                                 started_at=started_at, finished_at=finished_at,
                                 exit_code=exit_code, failure=failure))
 
@@ -281,7 +280,7 @@ async def run_task(task_run: TaskRun, eco: WorkspaceConfig, run_id: str, batch_i
     _write_json(os.path.join(stage_dir, "summary.json"), {
         "workspaceRunId": run_id,
         "mode": "centralized-workspace",
-        "agent": {"name": "kiro", "type": "kiro", "command": KIRO_CLI},
+        "agent": {"name": agent.name, "type": agent.type or agent.name, "command": agent.command},
         "batch": {"id": task.id, "label": task.title},
         "tasks": [{"id": task.id, "scope": task.scope, "repositories": task.repositories, "file": task.file_name}],
         "status": status_str,

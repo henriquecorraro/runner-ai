@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from .config import ACTIONABLE_STATUSES, WorkspaceConfig, TaskDef, load_workspace, load_tasks
-from .models import Run, TaskRun, TaskStatus
+from .models import AgentConfig, Run, TaskRun, TaskStatus
 from .worker import run_task
 
 
@@ -47,23 +47,28 @@ async def execute(
     eco: WorkspaceConfig,
     tasks: list[TaskDef],
     concurrency: int,
+    agent: Optional[AgentConfig] = None,
     run_id: Optional[str] = None,
     on_update=None,
 ) -> Run:
     """Run tasks in parallel with dependency resolution.
-    
+
     Args:
         eco: Loaded workspace config
         tasks: List of tasks to execute
         concurrency: Max parallel workers
+        agent: Agent config to use (default: workspace defaultAgent)
         run_id: Optional custom run ID
         on_update: Optional callback(run) called on state changes
     """
     run_id = run_id or generate_run_id()
+    resolved_agent = agent or eco.resolve_agent()
+
     run = Run(
         id=run_id,
         workspace=eco.name,
         concurrency=concurrency,
+        agent=resolved_agent,
         started_at=datetime.now(timezone.utc),
     )
 
@@ -93,7 +98,7 @@ async def execute(
         while ready and len(active) < concurrency:
             tid = ready.pop(0)
             tr = run.tasks[tid]
-            coro = run_task(tr, eco, run_id, batch_index_map[tid])
+            coro = run_task(tr, eco, resolved_agent, run_id, batch_index_map[tid])
             atask = asyncio.create_task(coro)
             active.add(atask)
             task_to_id[atask] = tid
