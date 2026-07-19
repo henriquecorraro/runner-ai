@@ -372,6 +372,24 @@ test('loadTaskContext returns content when .context.md exists', () => {
   assert.ok(result.content.includes('Cached stuff here'));
 });
 
+test('listTasks ignores .context.md snapshot files', () => {
+  const { listTasks } = require('./lib/tasks');
+  const tasksDir = path.join(tmpDir, 'context-list-tasks');
+  fs.mkdirSync(tasksDir, { recursive: true });
+  writeFileAtomic(
+    path.join(tasksDir, '01-context-list-task.md'),
+    '---\nid: context-list-task\ntitle: Context List Task\nscope: test\nstatus: open\nrepositories: []\nvalidation: []\ndocs_targets: []\ndepends_on: []\n---\nBody',
+  );
+  writeFileAtomic(
+    path.join(tasksDir, '01-context-list-task.context.md'),
+    '# Execution Context\n\nCached stuff here',
+  );
+
+  const tasks = listTasks({ tasksDir });
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0].id, 'context-list-task');
+});
+
 test('context file is not created when context arg is empty', () => {
   const contextPath = path.join(tmpDir, 'no-ctx-task.context.md');
   assert.equal(fs.existsSync(contextPath), false);

@@ -335,7 +335,7 @@ function loadTasks({ tasksDir, repositoriesById }) {
 
   const tasks = fs
     .readdirSync(tasksDir)
-    .filter((fileName) => fileName.endsWith('.md'))
+    .filter((fileName) => fileName.endsWith('.md') && !fileName.endsWith('.context.md'))
     .sort()
     .map((fileName) => parseTaskFile(path.join(tasksDir, fileName), repositoriesById));
 
