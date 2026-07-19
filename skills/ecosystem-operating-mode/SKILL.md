@@ -1,11 +1,11 @@
 ---
 name: workspace-operating-mode
-description: "Always-on operating guide for workspace-ai-runner. Use whenever an AI agent works in this repository, manages workspace tasks, runs isolated agents, or needs to choose which workspace skills to follow before satisfying the user's request."
+description: "Always-on operating guide for ws-runner. Use whenever an AI agent works in this repository, manages workspace tasks, runs isolated agents, or needs to choose which workspace skills to follow before satisfying the user's request."
 ---
 
 # Workspace Operating Mode
 
-Use this as the umbrella skill for `workspace-ai-runner`.
+Use this as the umbrella skill for `ws-runner`.
 
 This skill does not replace the other skills. It routes the agent to the right workflow and keeps repository work consistent.
 

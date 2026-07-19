@@ -1,133 +1,138 @@
-# How To Use This Runner
+# How To Use ws-runner
 
-Operating guide for AI agents working in this repository. Read this before acting.
+Operating guide for AI agents. Read this before acting.
 
 > This is NOT a single-app codebase. It is a centralized runner for managing tasks across multiple repositories.
 
 ## Quick Reference
 
-| Stage | Skill | What it does |
-|-------|-------|--------------|
-| 1 | `workspace-bootstrap` | Create/register an workspace |
-| 2 | `workspace-task-factory` | Create centralized task files |
-| 3 | `workspace-task-executor` | Execute tasks (chat or runner) |
-| 4 | Developer validates | AI summarizes, human confirms |
-| 5 | `workspace-task-closer` | Mark done + update docs |
+| Stage | Tool / Skill | What it does |
+|-------|-------------|--------------|
+| 1 | `create_workspace` | Create workspace (auto-detects agent + model) |
+| 2 | `create_task` | Create task with body + context + intent |
+| 3 | `start_task_execution` | Create branch, move card to In Progress |
+| 4 | Implement | Agent executes the task spec |
+| 5 | `finish_task_execution` | Review loop → move to Testing |
+| 6 | Developer validates | Human confirms result |
+| 7 | `set_task_status(done)` | Close with PR handoff |
 
 ## Rules
 
-- **English first** for all SDD artifacts (task files, titles, body, frontmatter, README updates). The user may chat in Portuguese — translate before writing.
-- **Current chat is the default** execution context. Use the isolated runner only when the user explicitly asks.
-- **Never mark `done`** until the developer confirms validation. Use `implemented` or `needs-rework` until then.
-- **Resolve contextual references** ("essas tasks", "pode fazer") against the current conversation first.
-
-## Discovering Workspaces
-
-```bash
-find workspaces -maxdepth 2 -name workspace.config.json -print
-```
-
-If the user doesn't name an workspace, list available ones and ask.
-
-Each workspace config may include `githubProject.url`. When present, use it as
-the canonical GitHub Projects board for future task-card sync.
+- **English first** for all SDD artifacts (task files, titles, body, frontmatter)
+- **Current chat is the default** execution context
+- **Never mark `done`** until the developer confirms
+- **State machine enforced**: open → implemented → done (no skipping)
+- **Tasks are for agents**: declarative, structured, zero prose
+- **Intent is for humans**: goes only to GitHub card
+- **Context snapshots** cache knowledge for executors
 
 ## Task File Format
 
-Files live in `workspaces/<name>/sdd/tasks/` with YAML frontmatter:
-
 ```yaml
 ---
-id: invoice-crud-backend
-title: Invoice CRUD Backend
-scope: invoice-crud
+id: billing-retry
+title: Billing Retry with Idempotency
+scope: billing
 status: open
 repositories:
-  - backend
+  - platform-api
 validation:
-  - npm run typecheck
-docs_targets:
-  - backend:docs/human/modules/invoices.md
-depends_on: []
+  - npm test
+depends_on:
+  - billing-schema-migration
+base_branch: main
 ---
+
+## Requirements
+- Add retry with exponential backoff to processPayment()
+- Check idempotency_key before each retry attempt
+- Max 3 retries, initial delay 1000ms
+
+## Constraints
+- Do not modify existing payment success flow
+- Return 409 if idempotency_key already processed
 ```
 
-Statuses: `open` → `implemented` → `done` (or `needs-rework` for another pass).
+## Context Snapshot (.context.md)
 
-## Execution Modes
+Created alongside the task to pre-load knowledge for the executor:
 
-**In current chat** (default, saves tokens):
-```text
-Use the `workspace-task-executor` skill.
-Execute task `invoice-crud-backend` in workspace billing-platform in this chat.
+```markdown
+# Execution Context: billing-retry
+
+> Pre-computed context — read before implementing.
+
+## Cached Knowledge
+
+### billing.js (line 45-60)
+- `processPayment({amount, idempotencyKey})` calls gateway.charge()
+- Gateway returns 502 in ~3% of calls
+- No retry logic exists today
+
+### payments table
+- Has `retry_count` column (unused)
+- Has `idempotency_key` column (unique index)
+
+### Pitfalls
+- Gateway 502 does NOT mean payment failed — must verify before retry
 ```
 
-**Via runner** (isolated, creates history):
+## Three Layers
+
+| Layer | Where | Who reads | What |
+|-------|-------|-----------|------|
+| body | `.md` frontmatter | Executor agent | WHAT to do (specs) |
+| context | `.context.md` | Executor agent | Knowledge cache (saves tokens) |
+| intent | GitHub card | Humans | WHY (reasoning, conversation summary) |
+
+## MCP Tools
+
+```
+get_operating_context    — rules and workspace state
+create_workspace         — deterministic, auto-detects agent/model
+create_task              — all-or-fail GitHub sync, body + intent + context
+get_task                 — returns task + execution context
+start_task_execution     — branch + In Progress
+finish_task_execution    — review loop → Testing
+set_task_status          — state machine enforced
+run_parallel             — Python async runner, any agent
+reconcile_workspace      — detect/fix drift GitHub↔local
+```
+
+## Parallel Runner
+
+The Python runner at `runners/kiro/` is agent-agnostic:
+
 ```bash
-npm run tasks -- --config workspaces/<name>/workspace.config.json --task <id> --dry-run
-npm run tasks -- --config workspaces/<name>/workspace.config.json --task <id>
+python3 -m runners.kiro --config workspaces/<name>/workspace.config.json --open-tasks
 ```
 
-Selection flags: `--task <id>`, `--scope <id>`, `--feature <fragment>`, `--open-tasks`, `--open-scopes`.
-
-Always `--dry-run` first when using the runner.
-
-## MCP Interface
-
-Start the MCP server:
-```bash
-npm run mcp
+It reads `agents[defaultAgent]` from workspace config and spawns:
+```
+<command> <args...> [--model <model>] <prompt>
 ```
 
-Available tools: `get_operating_context`, `list_workspaces`, `create_workspace`, `list_tasks`, `get_task`, `get_active_tasks`, `remember_active_tasks`, `create_task`, `start_task_execution`, `finish_task_execution`, `set_task_board_status`, `set_task_status`, `run_with_runner`.
+Features:
+- Dependency resolution (waits for `dependsOn`)
+- Failed deps → skip dependent tasks
+- Board sync: In Progress → Testing
+- Live TUI monitor (Rich)
+- Logs per task in `runs/<run-id>/`
 
-Use `create_workspace` for deterministic workspace creation. If the user has
-not provided a GitHub Project URL, ask for the URL or ask whether the workspace
-should be created without a Project. Only pass `skipGithubProject: true` after
-that explicit confirmation.
+## Agent Auto-Detection
 
-GitHub Project lifecycle:
+On `create_workspace`, the runner detects:
+1. Which agent is invoking (via env vars or /proc/ppid)
+2. Which model is active (via KIRO_MODEL, ANTHROPIC_MODEL, etc)
 
-- `create_task`: uses all-or-fail GitHub sync when `githubProject` is configured; it opens GitHub issues in every linked repository, adds the primary issue to the Project in `Todo`, assigns every issue to the authenticated user, and only then creates the local task.
-- Current-chat execution: call `start_task_execution` before implementation and `finish_task_execution` after implementation.
-- `run_with_runner` does the same `in-progress` to `testing` transition around isolated runner execution for every selected task.
-- `run_parallel` does the same `in-progress` to `testing` transition per task as each worker starts and finishes successfully.
-- Closing: ask whether to skip PR handoff, use the current branch, or create a new branch. Then call `set_task_status` with `status: "done"`, `userValidated: true`, `prHandoff`, and `closeoutSummary`; it updates the GitHub issue closeout section, records PR URLs when provided, and moves the Project item to `Done`.
+Both are persisted in `workspace.config.json`. Override with explicit `defaultAgent` param.
 
-## Installing Skills
+## Determinism
 
-Skills are in `skills/`. Link them to your AI tool:
-
-**Codex:**
-```bash
-mkdir -p "$HOME/.codex/skills"
-for skill in workspace-bootstrap workspace-operating-mode workspace-task-factory workspace-task-executor workspace-task-closer codex-direct-mode; do
-  ln -sfn "$PWD/skills/$skill" "$HOME/.codex/skills/$skill"
-done
-```
-
-**Claude Code:**
-```bash
-mkdir -p "$HOME/.claude/skills"
-for skill in workspace-bootstrap workspace-operating-mode workspace-task-factory workspace-task-executor workspace-task-closer codex-direct-mode; do
-  ln -sfn "$PWD/skills/$skill" "$HOME/.claude/skills/$skill"
-done
-```
-
-## Plugin Registration
-
-**Codex:**
-```bash
-codex plugin marketplace add /home/rick/projetos/workspace-ai-runner
-# or direct MCP:
-codex mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
-```
-
-**Claude Code:**
-```bash
-claude mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
-```
-
-## After Execution
-
-Summarize: tasks executed, repos changed, validation run, docs updated, gaps/risks. Then wait for developer confirmation before closing.
+- Atomic writes (rename pattern)
+- O_EXCL idempotent creation
+- State machine transitions
+- Cross-repo branch rollback
+- Lifecycle gates (start → finish)
+- Schema validation
+- Active tasks persisted to disk

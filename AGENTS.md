@@ -4,7 +4,7 @@ This repository is a control plane for workspace work, not a single application 
 
 When a user asks to plan, create, execute, or close workspace tasks:
 
-- Prefer the MCP tools from `bin/workspace-ai-mcp.js` when available.
+- Prefer the MCP tools from `bin/ws-runner-mcp.js` when available.
 - ENGLISH FIRST: write all workspace SDD content in English, including task files,
   task titles, task body sections, textual frontmatter values, `Task Status`
   entries, run prompts, and SDD README updates. The user may speak Portuguese,

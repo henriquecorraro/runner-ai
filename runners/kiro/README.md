@@ -27,7 +27,7 @@ python -m runners.kiro --config ecosystems/liguelead-platform/ecosystem.config.j
 python -m runners.kiro --config ecosystems/liguelead-platform/ecosystem.config.json --open-tasks --concurrency 4
 ```
 
-Run from the ecosystem-ai-runner root directory.
+Run from the ws-runner root directory.
 
 ## Environment Variables
 

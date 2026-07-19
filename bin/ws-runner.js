@@ -13,11 +13,11 @@ function printHelp() {
   console.log(`Workspace AI Runner
 
 Usage:
-  workspace-ai-runner --config <path> --task <task-id-or-path>
-  workspace-ai-runner --config <path> --feature <task-name-fragment>
-  workspace-ai-runner --config <path> --scope <scope-id>
-  workspace-ai-runner --config <path> --open-tasks
-  workspace-ai-runner --config <path> --open-scopes
+  ws-runner --config <path> --task <task-id-or-path>
+  ws-runner --config <path> --feature <task-name-fragment>
+  ws-runner --config <path> --scope <scope-id>
+  ws-runner --config <path> --open-tasks
+  ws-runner --config <path> --open-scopes
 
 Options:
   --task <value>         Uses one central workspace task by id, filename, or relative path. Repeatable.
@@ -979,7 +979,7 @@ function resolveBatches(options, taskIndex) {
 }
 
 function log(message) {
-  console.log(`[workspace-ai-runner] ${message}`);
+  console.log(`[ws-runner] ${message}`);
 }
 
 async function runBatch({
@@ -1210,6 +1210,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(`[workspace-ai-runner] failed: ${error.message}`);
+  console.error(`[ws-runner] failed: ${error.message}`);
   process.exitCode = 1;
 });

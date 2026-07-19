@@ -1,6 +1,6 @@
 ---
 name: workspace-task-executor
-description: "Execute centralized workspace tasks from workspace-ai-runner. Use when the user wants to run, execute, re-run, or implement tasks for a specific workspace, either in the current chat session or by asking the AI to run the workspace runner."
+description: "Execute centralized workspace tasks from ws-runner. Use when the user wants to run, execute, re-run, or implement tasks for a specific workspace, either in the current chat session or by asking the AI to run the workspace runner."
 ---
 
 # Workspace Task Executor

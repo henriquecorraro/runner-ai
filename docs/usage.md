@@ -41,14 +41,13 @@ Important fields:
 - `historyRoot`: where runs are stored relative to the workspace folder
 - `sddRoot`: where the centralized SDD lives relative to the workspace folder
 - `githubProject`: optional GitHub Projects v2 board for this workspace
-- `defaultAgent`: default agent key. If omitted, the runner uses `codex`
-- `agents`: named agent configurations
+- `defaultAgent`: default agent key (auto-detected from invoking LLM)
+- `agents`: named agent configurations with `command`, `args`, `model`, and `env`
 - `repositories`: local repositories that belong to the workspace
 
-Supported agent adapter types:
-
-- `codex`: runs Codex CLI with `--add-dir`, `-C`, and prompt via stdin
-- `claude-code`: runs Claude Code CLI with `-p`, `--add-dir`, and a pointer to the generated prompt file
+The runner is agent-agnostic. It reads `command + args + model` from the workspace
+config and spawns the agent as a subprocess. Any CLI that accepts a prompt as its
+last positional argument works.
 
 Example:
 
@@ -57,8 +56,14 @@ Example:
   "githubProject": {
     "url": "https://github.com/orgs/ligue-lead-tech/projects/3"
   },
-  "defaultAgent": "codex",
+  "defaultAgent": "kiro",
   "agents": {
+    "kiro": {
+      "type": "kiro",
+      "command": "kiro-cli",
+      "args": ["chat", "--no-interactive", "--trust-all-tools"],
+      "model": "claude-opus-4"
+    },
     "codex": {
       "type": "codex",
       "command": "codex",
@@ -72,8 +77,6 @@ Example:
   }
 }
 ```
-
-Legacy `codex.command` and `codex.args` configs are still supported for Codex.
 
 When `githubProject` is present, the runner validates the URL and exposes
 derived metadata to agents:
@@ -256,24 +259,24 @@ the runner unless the user chooses runner execution.
 
 ## Codex Plugin
 
-The local plugin wrapper lives at `plugins/workspace-ai-runner/`.
+The local plugin wrapper lives at `plugins/ws-runner/`.
 
 Register the marketplace:
 
 ```bash
-codex plugin marketplace add /home/rick/projetos/workspace-ai-runner
+codex plugin marketplace add /home/rick/projetos/ws-runner
 ```
 
 The plugin includes:
 
 - `.codex-plugin/plugin.json`: plugin metadata
 - `.mcp.json`: MCP server configuration
-- `skills/workspace-ai-runner/SKILL.md`: plugin operating instructions
+- `skills/ws-runner/SKILL.md`: plugin operating instructions
 
 Direct MCP registration remains available:
 
 ```bash
-codex mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
+codex mcp add ws-runner -- node /home/rick/projetos/ws-runner/bin/ws-runner-mcp.js
 ```
 
 ## Execution Model

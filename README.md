@@ -1,253 +1,153 @@
-# Workspace AI Runner
+# ws-runner
 
-Generic runner for executing centralized workspace tasks across one or more local repositories with shared agent sessions.
+Generic parallel runner for AI agent execution across multi-repository workspaces.
 
-The runner is not tied to a single product. Each workspace lives under `workspaces/<name>/` and owns its own config, centralized SDD, local skills, and execution history.
+The runner is agent-agnostic: it reads the agent command from `workspace.config.json` and spawns any CLI (kiro-cli, codex, claude, or custom). Each workspace lives under `workspaces/<name>/` and owns its own config, centralized SDD, local skills, and execution history.
 
-If you are an AI agent reading this repository after clone, read [HOWTOUSE.md](HOWTOUSE.md) first. It is the operating guide for Codex, Claude Code, or any compatible coding agent.
+If you are an AI agent reading this repository after clone, read [HOWTOUSE.md](HOWTOUSE.md) first.
 
 ## Structure
 
 ```text
-workspace-ai-runner/
+ws-runner/
   bin/
-  docs/
-  skills/
+    ws-runner.js          # CLI runner
+    ws-runner-mcp.js      # MCP server
+  lib/                    # Core modules
+  runners/kiro/           # Python async parallel runner
+  skills/                 # Shared agent skills
   workspaces/
-    liguelead/
+    <name>/
       workspace.config.json
-      sdd/
+      sdd/tasks/
       skills/
       runs/
 ```
 
 ## Core Idea
 
-- repositories stay focused on code and repo-local docs
-- workspace planning stays centralized in this runner
-- workspaces may link to one GitHub Project through `githubProject.url`
-- tasks live in `workspaces/<name>/sdd/tasks/`
-- centralized workspace SDD artifacts are English-first, even when the chat is in another language
-- related tasks can share the same `scope`
-- the runner can execute one task, one scope, all open tasks, or all open scopes
-- work follows the sequence: create workspace, create tasks, execute tasks, validate with the developer, then close tasks
+- Repositories stay focused on code; workspace planning stays centralized here
+- Tasks are machine-readable specs for AI agents (zero prose, declarative)
+- GitHub cards hold human-readable context (intent, WHY)
+- Context snapshots (`.context.md`) cache knowledge for executor agents
+- The runner detects which agent is calling and configures itself accordingly
+- Work follows: create workspace → create tasks → execute → validate → close
 
-## Workflow
+## Workspace Config
 
-Use the skills in this order:
-
-1. `workspace-operating-mode`: choose the right workflow and local skills.
-2. `workspace-bootstrap`: create or register an workspace.
-3. `workspace-task-factory`: create centralized task files.
-4. `workspace-task-executor`: execute tasks in the current chat or via runner from the chat.
-5. Developer and AI validate the result.
-6. `workspace-task-closer`: mark tasks as `done` only after validation.
-
-Do not mark tasks as `done` during execution. Use `implemented` or `needs-rework` until the developer confirms the result.
-
-## Runner Examples
-
-Run one scope:
-
-```bash
-npm run tasks -- --config workspaces/<name>/workspace.config.json --scope <scope-id>
+```json
+{
+  "name": "my-workspace",
+  "defaultAgent": "kiro",
+  "agents": {
+    "kiro": {
+      "type": "kiro",
+      "command": "kiro-cli",
+      "args": ["chat", "--no-interactive", "--trust-all-tools"],
+      "model": "claude-opus-4"
+    },
+    "codex": {
+      "command": "codex",
+      "args": ["exec", "--ephemeral"]
+    },
+    "claude-code": {
+      "command": "claude",
+      "args": ["-p"]
+    }
+  },
+  "githubProject": {
+    "url": "https://github.com/orgs/<org>/projects/<number>"
+  },
+  "repositories": [
+    { "id": "backend", "path": "../../backend", "validation": ["npm test"] }
+  ]
+}
 ```
 
-Run all actionable tasks in one shared execution:
+Key points:
+- `defaultAgent` is auto-detected from the invoking LLM at workspace creation
+- `model` is persisted from the current session's model
+- Any CLI that accepts a prompt as last argument works as an agent
 
-```bash
-npm run tasks -- --config workspaces/<name>/workspace.config.json --open-tasks
+## Task Lifecycle
+
+```
+open → implemented → done
+  ↕         ↓
+needs-rework
 ```
 
-Run all actionable tasks grouped by scope:
+Invalid transitions are rejected (e.g., `open → done` is blocked).
+
+## Three Layers Per Task
+
+| Layer | File | Content | Audience |
+|-------|------|---------|----------|
+| **body** | `sdd/tasks/XX-task.md` | Declarative specs (zero prose) | Executor agent |
+| **context** | `sdd/tasks/XX-task.context.md` | Pre-computed knowledge snapshot | Executor agent |
+| **intent** | GitHub card only | WHY, reasoning, conversation summary | Humans |
+
+## Parallel Execution
 
 ```bash
-npm run tasks -- --config workspaces/<name>/workspace.config.json --open-scopes
+# Via Python runner (recommended)
+python3 -m runners.kiro --config workspaces/<name>/workspace.config.json --open-tasks
+
+# With agent override
+python3 -m runners.kiro --config workspaces/<name>/workspace.config.json --scope billing --agent codex
+
+# Dry run
+python3 -m runners.kiro --config workspaces/<name>/workspace.config.json --open-tasks --dry-run
 ```
 
-Dry-run before invoking an agent:
+Features:
+- Dependency resolution: tasks wait for `dependsOn` to complete
+- Failed deps → dependent tasks are skipped
+- Board sync: In Progress on start, Testing on success
+- Any agent from workspace config (generic spawner)
 
-```bash
-npm run tasks -- --config workspaces/<name>/workspace.config.json --open-scopes --dry-run
-```
-
-Choose an agent explicitly:
-
-```bash
-npm run tasks -- --config workspaces/<name>/workspace.config.json --task <task-id> --agent claude-code
-```
-
-## MCP For Agents
-
-The preferred long-term interface is MCP: the developer talks normally in the
-AI chat, and the agent calls workspace tools behind the scenes.
-
-Start the MCP server with:
+## MCP Server
 
 ```bash
 npm run mcp
+# or: node bin/ws-runner-mcp.js
 ```
 
-The MCP tools are designed around this rule:
+Key tools:
+- `create_workspace` — auto-detects agent + model, requires GitHub Project decision
+- `create_task` — all-or-fail GitHub sync, accepts `intent` (card-only) and `context` (snapshot)
+- `get_task` — returns task + execution context if `.context.md` exists
+- `start_task_execution` / `finish_task_execution` — lifecycle gates with review loop
+- `run_parallel` — spawns Python async runner with workspace agent config
+- `set_task_status` — state machine enforced, PR handoff on close
+- `reconcile_workspace` — bidirectional drift detection GitHub↔local
 
-- workspace creation goes through `create_workspace`, which requires either a GitHub Project URL or explicit confirmation to create without one
-- `create_task` uses all-or-fail GitHub sync when the workspace has `githubProject`: it creates GitHub issues in every linked repository, adds the primary issue to the Project in `Todo`, assigns every issue to the authenticated user, and only then records the local task
-- current-chat task execution uses `start_task_execution` before implementation and `finish_task_execution` after implementation
-- validated closure asks for PR handoff intent, then uses `set_task_status(status="done", userValidated=true)` to update the issue closeout and move the Project item to `Done`
-- current chat execution is the default, because it reuses the existing brainstorm context
-- contextual phrases like "as tasks" or "pode fazer" refer first to tasks discussed in the current chat
-- the isolated runner is used only when the user explicitly asks for it or confirms it for a large scope/open-task batch
+## Determinism Guarantees
 
-## Codex Plugin
+- Atomic writes (rename pattern) — no corruption on crash
+- O_EXCL task creation — race-condition proof
+- State machine — invalid transitions rejected
+- Cross-repo branch rollback — if branch fails in repo N, repos 1..N-1 reverted
+- Lifecycle gates — finish requires start
+- Schema validation — unknown/missing frontmatter fields rejected
+- Active tasks persisted to disk — survives MCP restart
 
-This repository also ships a local Codex plugin wrapper around the MCP server
-and operating skill.
-
-Register the local plugin marketplace:
+## Testing
 
 ```bash
-codex plugin marketplace add /home/rick/projetos/workspace-ai-runner
+npm run check   # Syntax validation
+npm test        # 40 determinism tests
 ```
 
-The plugin lives at:
-
-```text
-plugins/workspace-ai-runner/
-```
-
-For direct MCP usage without relying on plugin UI activation, register the MCP
-server explicitly:
+## Registration
 
 ```bash
-codex mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
+# Kiro
+kiro mcp add ws-runner -- node /path/to/ws-runner/bin/ws-runner-mcp.js
+
+# Codex
+codex mcp add ws-runner -- node /path/to/ws-runner/bin/ws-runner-mcp.js
+
+# Claude Code
+claude mcp add ws-runner -- node /path/to/ws-runner/bin/ws-runner-mcp.js
 ```
-
-Then start Codex from this repo:
-
-```bash
-codex -C /home/rick/projetos/workspace-ai-runner
-```
-
-## Claude Code Plugin
-
-The same plugin folder also exposes a Claude Code manifest at
-`plugins/workspace-ai-runner/.claude-plugin/plugin.json`, alongside a local
-marketplace declaration at `.claude-plugin/marketplace.json`.
-
-Register the local marketplace and install the plugin from inside Claude Code:
-
-```text
-/plugin marketplace add /home/luiz/liguelead/runner-ai
-/plugin install workspace-ai-runner@workspace-ai-runner-local
-```
-
-The plugin manifest declares the MCP server inline using `${CLAUDE_PLUGIN_ROOT}`,
-so no manual `claude mcp add` step is required after installation.
-
-For direct MCP usage without going through the plugin UI, register the MCP
-server explicitly instead:
-
-```bash
-claude mcp add workspace-ai-runner -- node /home/luiz/liguelead/runner-ai/bin/workspace-ai-mcp.js
-```
-
-## Installing Skills
-
-For the full AI-facing setup, see [HOWTOUSE.md](HOWTOUSE.md).
-
-Codex reads local skills from:
-
-```text
-~/.codex/skills/
-```
-
-Claude Code can read skills from:
-
-```text
-~/.claude/skills/
-.claude/skills/
-```
-
-From the repository root, link the generic skills for Codex:
-
-```bash
-mkdir -p "$HOME/.codex/skills"
-
-ln -sfn "$PWD/skills/workspace-bootstrap" \
-  "$HOME/.codex/skills/workspace-bootstrap"
-
-ln -sfn "$PWD/skills/workspace-operating-mode" \
-  "$HOME/.codex/skills/workspace-operating-mode"
-
-ln -sfn "$PWD/skills/workspace-task-factory" \
-  "$HOME/.codex/skills/workspace-task-factory"
-
-ln -sfn "$PWD/skills/workspace-task-executor" \
-  "$HOME/.codex/skills/workspace-task-executor"
-
-ln -sfn "$PWD/skills/workspace-task-closer" \
-  "$HOME/.codex/skills/workspace-task-closer"
-
-ln -sfn "$PWD/skills/codex-direct-mode" \
-  "$HOME/.codex/skills/codex-direct-mode"
-```
-
-Or link them for Claude Code:
-
-```bash
-mkdir -p "$HOME/.claude/skills"
-
-ln -sfn "$PWD/skills/workspace-bootstrap" \
-  "$HOME/.claude/skills/workspace-bootstrap"
-
-ln -sfn "$PWD/skills/workspace-operating-mode" \
-  "$HOME/.claude/skills/workspace-operating-mode"
-
-ln -sfn "$PWD/skills/workspace-task-factory" \
-  "$HOME/.claude/skills/workspace-task-factory"
-
-ln -sfn "$PWD/skills/workspace-task-executor" \
-  "$HOME/.claude/skills/workspace-task-executor"
-
-ln -sfn "$PWD/skills/workspace-task-closer" \
-  "$HOME/.claude/skills/workspace-task-closer"
-
-ln -sfn "$PWD/skills/codex-direct-mode" \
-  "$HOME/.claude/skills/codex-direct-mode"
-```
-
-## Using Skills
-
-After the links exist, use the skill by naming it in the prompt.
-
-Examples:
-
-```text
-Use the `workspace-bootstrap` skill.
-Crie um novo ecossistema chamado flow com os repositórios /caminho/repo-a e /caminho/repo-b.
-Não crie tasks ainda.
-```
-
-```text
-Use the `workspace-task-factory` skill.
-Crie tasks para o scope onboarding no ecossistema flow.
-```
-
-```text
-Use the `workspace-task-executor` skill.
-Execute a task onboarding-backend no ecossistema flow via runner a partir deste chat.
-```
-
-```text
-Use the `workspace-task-executor` skill.
-Execute a task onboarding-backend no ecossistema flow nesta conversa.
-```
-
-```text
-Use the `workspace-task-closer` skill.
-A task onboarding-backend do ecossistema flow foi validada. Marque como done e atualize a doc humana no repositório dono.
-```
-
-If a skill does not appear immediately in the active AI tool, open a new thread or restart the tool session.
-
-See [docs/usage.md](docs/usage.md) for the full contract.

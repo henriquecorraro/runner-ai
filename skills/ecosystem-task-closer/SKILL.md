@@ -52,7 +52,7 @@ Use this skill for requests like:
 - `docs_targets` use the format `repo-id:path/inside/repo.md`.
 - If a task has no `docs_targets`, infer the repository-local doc target from repo rules and code context, then add it to the task before closing.
 - If the correct doc target is unclear, inspect the repository docs index before choosing.
-- Do not create human docs inside `workspace-ai-runner`.
+- Do not create human docs inside `ws-runner`.
 - Keep docs factual and stable; describe current behavior, business rules, routes, contracts, module boundaries, and operational notes.
 
 ## Status Rules
