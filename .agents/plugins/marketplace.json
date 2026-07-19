@@ -1,7 +1,7 @@
 {
   "name": "ws-runner-local",
   "interface": {
-    "displayName": "Local Ecosystem AI Runner"
+    "displayName": "Local Workspace Runner"
   },
   "plugins": [
     {

@@ -11,8 +11,8 @@
   "scripts": {
     "tasks": "node bin/ws-runner.js",
     "mcp": "node bin/ws-runner-mcp.js",
-    "test": "node test-determinism.js",
-    "check": "node --check lib/utils.js && node --check lib/frontmatter.js && node --check lib/github-project.js && node --check lib/github-sync.js && node --check lib/workspace-create.js && node --check lib/workspaces.js && node --check lib/tasks.js && node --check lib/runner.js && node --check lib/parallel-runner.js && node --check lib/reconcile.js && node --check bin/ws-runner.js && node --check bin/ws-runner-mcp.js"
+    "test": "node test-determinism.js && python3 -m unittest runners.generic.test_runner",
+    "check": "node --check lib/utils.js && node --check lib/frontmatter.js && node --check lib/github-project.js && node --check lib/github-sync.js && node --check lib/workspace-create.js && node --check lib/workspaces.js && node --check lib/tasks.js && node --check lib/runner.js && node --check lib/reconcile.js && node --check bin/ws-runner.js && node --check bin/ws-runner-mcp.js && python3 -m compileall -q runners/generic"
   },
   "engines": {
     "node": ">=18"

@@ -13,6 +13,7 @@ const assert = require('node:assert/strict');
 
 const { writeFileAtomic, validateFrontmatter, parseTaskFile, buildTaskMarkdown, KNOWN_FRONTMATTER_FIELDS } = require('./lib/frontmatter');
 const { slugify } = require('./lib/utils');
+const { buildRunnerArgs } = require('./lib/runner');
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eco-test-'));
 let passed = 0;
@@ -262,30 +263,15 @@ test('active tasks are persisted to disk and reloadable', () => {
 });
 
 // ============================================================
-console.log('\n#6 - Cleanup de runs em memória');
+console.log('\n#6 - Seleção paralela de tasks');
 // ============================================================
 
-test('runs state.json is written correctly', () => {
-  const stateFile = path.join(tmpDir, 'state.json');
-  const state = {
-    id: 'par-123',
-    workspace: 'test',
-    concurrency: 4,
-    total: 2,
-    completed: 2,
-    startedAt: '2026-01-01T00:00:00Z',
-    finishedAt: '2026-01-01T00:01:00Z',
-    tasks: [
-      { id: 'task-a', status: 'success', exitCode: 0 },
-      { id: 'task-b', status: 'failed', exitCode: 1 },
-    ],
-  };
-  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2) + '\n');
-  const loaded = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
-  assert.equal(loaded.id, 'par-123');
-  assert.equal(loaded.tasks.length, 2);
-  assert.equal(loaded.tasks[0].status, 'success');
-  assert.equal(loaded.tasks[1].status, 'failed');
+test('parallel selection forwards every task id to the generic runner', () => {
+  const args = buildRunnerArgs(
+    { configPath: '/tmp/workspace.config.json' },
+    { taskIds: ['task-a', 'task-b'] },
+  );
+  assert.deepEqual(args.slice(-4), ['--task', 'task-a', '--task', 'task-b']);
 });
 
 // ============================================================
@@ -474,56 +460,35 @@ test('tasks without deps are immediately ready', () => {
 });
 
 // ============================================================
-console.log('\nRunner - generic agent command');
+console.log('\nRunner - generic Python entrypoint');
 // ============================================================
 
-test('agent command is built from workspace config', () => {
-  const agent = { name: 'kiro', command: 'kiro-cli', args: ['chat', '--no-interactive', '--trust-all-tools'] };
-  const prompt = 'Execute task X';
-  const fullArgs = [...agent.args, prompt];
-  assert.equal(fullArgs[0], 'chat');
-  assert.equal(fullArgs[fullArgs.length - 1], prompt);
+test('runner targets the generic Python module', () => {
+  const args = buildRunnerArgs({ configPath: '/tmp/workspace.config.json' }, { selection: 'task', value: 'task-one' });
+  assert.deepEqual(args.slice(0, 4), ['-m', 'runners.generic', '--config', '/tmp/workspace.config.json']);
 });
 
-test('different agents produce different commands', () => {
-  const agents = {
-    kiro: { command: 'kiro-cli', args: ['chat', '--no-interactive', '--trust-all-tools'] },
-    codex: { command: 'codex', args: ['exec', '--ephemeral'] },
-    claude: { command: 'claude', args: ['-p'] },
-  };
-  const prompt = 'Do the thing';
-  for (const [name, agent] of Object.entries(agents)) {
-    const cmd = agent.command;
-    const fullArgs = [...agent.args, prompt];
-    assert.equal(cmd, agent.command);
-    assert.equal(fullArgs[fullArgs.length - 1], prompt);
-  }
+test('runner forwards every public selection mode', () => {
+  const ws = { configPath: '/tmp/workspace.config.json' };
+  assert(buildRunnerArgs(ws, { selection: 'feature', value: 'billing' }).includes('--feature'));
+  assert(buildRunnerArgs(ws, { selection: 'scope', value: 'billing' }).includes('--scope'));
+  assert(buildRunnerArgs(ws, { selection: 'open-tasks' }).includes('--open-tasks'));
+  assert(buildRunnerArgs(ws, { selection: 'open-scopes' }).includes('--open-scopes'));
 });
 
-test('workspace resolves default agent correctly', () => {
-  const config = {
-    defaultAgent: 'kiro',
-    agents: {
-      kiro: { name: 'kiro', command: 'kiro-cli', args: [] },
-      codex: { name: 'codex', command: 'codex', args: [] },
-    },
-  };
-  const resolved = config.agents[config.defaultAgent];
-  assert.equal(resolved.name, 'kiro');
-  assert.equal(resolved.command, 'kiro-cli');
+test('runner forwards agent override and concurrency', () => {
+  const args = buildRunnerArgs(
+    { configPath: '/tmp/workspace.config.json' },
+    { selection: 'open-tasks', agent: 'custom', concurrency: 3 },
+  );
+  assert.deepEqual(args.slice(-4), ['--agent', 'custom', '--concurrency', '3']);
 });
 
-test('workspace allows agent override', () => {
-  const config = {
-    defaultAgent: 'kiro',
-    agents: {
-      kiro: { name: 'kiro', command: 'kiro-cli', args: [] },
-      codex: { name: 'codex', command: 'codex', args: [] },
-    },
-  };
-  const override = 'codex';
-  const resolved = config.agents[override] || config.agents[config.defaultAgent];
-  assert.equal(resolved.name, 'codex');
+test('runner rejects calls without a selection', () => {
+  assert.throws(
+    () => buildRunnerArgs({ configPath: '/tmp/workspace.config.json' }),
+    /Select tasks/,
+  );
 });
 
 // ============================================================

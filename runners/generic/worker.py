@@ -171,7 +171,8 @@ def build_agent_command(agent: AgentConfig, prompt_instruction: str) -> tuple[st
 
     Convention: the prompt is always the last positional argument after the configured args.
     If the agent has a model configured, inject --model before the prompt.
-    All known agent CLIs (kiro-cli, codex, claude) accept this.
+    Agent commands are defined by the workspace; supported built-in examples
+    accept this convention.
     """
     args = list(agent.args)
     if agent.model:
@@ -183,13 +184,8 @@ def build_agent_command(agent: AgentConfig, prompt_instruction: str) -> tuple[st
 def build_agent_env(agent: AgentConfig) -> dict[str, str]:
     """Build environment variables for the agent process."""
     env = {**os.environ}
-    # Inject agent-specific env vars from config
     if agent.env:
         env.update(agent.env)
-    # Also set model as env var for agents that read it from env
-    if agent.model:
-        env.setdefault("KIRO_MODEL", agent.model)
-        env.setdefault("ANTHROPIC_MODEL", agent.model)
     return env
 
 

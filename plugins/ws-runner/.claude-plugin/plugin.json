@@ -1,9 +1,9 @@
 {
   "name": "ws-runner",
   "version": "0.1.0",
-  "description": "Plan, track, and execute centralized ecosystem tasks through Claude Code with MCP-backed tools.",
+  "description": "Plan, track, and execute centralized workspace tasks through Claude Code with MCP-backed tools.",
   "author": {
-    "name": "Ecosystem AI Runner",
+    "name": "Workspace Runner",
     "email": "support@example.com",
     "url": "https://example.com/ws-runner"
   },

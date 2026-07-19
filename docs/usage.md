@@ -168,13 +168,13 @@ Run one scope:
 npm run tasks -- --config workspaces/liguelead/workspace.config.json --scope broadcast-interaction-unique-key
 ```
 
-Run all actionable tasks in one shared execution:
+Run all actionable tasks with dependency-aware parallelism:
 
 ```bash
 npm run tasks -- --config workspaces/liguelead/workspace.config.json --open-tasks
 ```
 
-Run all actionable tasks grouped by scope:
+Run all actionable tasks through the compatibility `open-scopes` mode:
 
 ```bash
 npm run tasks -- --config workspaces/liguelead/workspace.config.json --open-scopes
@@ -281,13 +281,16 @@ codex mcp add ws-runner -- node /home/rick/projetos/ws-runner/bin/ws-runner-mcp.
 
 ## Execution Model
 
-The runner builds one shared agent batch per selection:
+The generic runner creates one agent subprocess per selected task:
 
-- `--task`: one shared batch with the selected tasks
-- `--feature`: one shared batch with the matched task
-- `--scope`: one shared batch with every task in that scope
-- `--open-tasks`: one shared batch with every actionable task (`open` and `needs-rework`)
-- `--open-scopes`: one shared batch per scope that still has actionable tasks
+- `--task`: the explicitly selected task or tasks
+- `--feature`: the uniquely matched task
+- `--scope`: every actionable task in that scope
+- `--open-tasks`: every actionable task (`open` and `needs-rework`)
+- `--open-scopes`: compatibility alias for dependency-aware execution of every actionable task
+
+Dependencies run first when selected in the same execution. Dependencies outside
+the selection must already have `done` status.
 
 The runner grants write access to:
 

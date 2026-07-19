@@ -22,7 +22,11 @@ def resolve_ready_tasks(run: Run) -> list[str]:
         if tr.status != TaskStatus.QUEUED:
             continue
         deps = tr.task.depends_on
-        if all(run.tasks.get(d) and run.tasks[d].status == TaskStatus.SUCCESS for d in deps if d in run.tasks):
+        if all(
+            (d in run.tasks and run.tasks[d].status == TaskStatus.SUCCESS)
+            or d in run.satisfied_dependencies
+            for d in deps
+        ):
             ready.append(tid)
     return ready
 
@@ -40,6 +44,11 @@ def skip_blocked(run: Run) -> list[str]:
                 tr.error = f"Dependency '{d}' failed"
                 skipped.append(tid)
                 break
+            if d not in run.tasks and d not in run.satisfied_dependencies:
+                tr.status = TaskStatus.SKIPPED
+                tr.error = f"Dependency '{d}' was not selected or completed"
+                skipped.append(tid)
+                break
     return skipped
 
 
@@ -49,6 +58,7 @@ async def execute(
     concurrency: int,
     agent: Optional[AgentConfig] = None,
     run_id: Optional[str] = None,
+    satisfied_dependency_ids: Optional[set[str]] = None,
     on_update=None,
 ) -> Run:
     """Run tasks in parallel with dependency resolution.
@@ -69,6 +79,7 @@ async def execute(
         workspace=eco.name,
         concurrency=concurrency,
         agent=resolved_agent,
+        satisfied_dependencies=satisfied_dependency_ids or set(),
         started_at=datetime.now(timezone.utc),
     )
 

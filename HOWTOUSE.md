@@ -101,10 +101,10 @@ reconcile_workspace      — detect/fix drift GitHub↔local
 
 ## Parallel Runner
 
-The Python runner at `runners/kiro/` is agent-agnostic:
+The Python runner at `runners/generic/` is agent-agnostic:
 
 ```bash
-python3 -m runners.kiro --config workspaces/<name>/workspace.config.json --open-tasks
+python3 -m runners.generic --config workspaces/<name>/workspace.config.json --open-tasks
 ```
 
 It reads `agents[defaultAgent]` from workspace config and spawns:

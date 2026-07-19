@@ -14,7 +14,7 @@ ws-runner/
     ws-runner.js          # CLI runner
     ws-runner-mcp.js      # MCP server
   lib/                    # Core modules
-  runners/kiro/           # Python async parallel runner
+  runners/generic/        # Generic Python async runner
   skills/                 # Shared agent skills
   workspaces/
     <name>/
@@ -90,14 +90,14 @@ Invalid transitions are rejected (e.g., `open → done` is blocked).
 ## Parallel Execution
 
 ```bash
-# Via Python runner (recommended)
-python3 -m runners.kiro --config workspaces/<name>/workspace.config.json --open-tasks
+# Via the generic Python runner
+python3 -m runners.generic --config workspaces/<name>/workspace.config.json --open-tasks
 
 # With agent override
-python3 -m runners.kiro --config workspaces/<name>/workspace.config.json --scope billing --agent codex
+python3 -m runners.generic --config workspaces/<name>/workspace.config.json --scope billing --agent codex
 
 # Dry run
-python3 -m runners.kiro --config workspaces/<name>/workspace.config.json --open-tasks --dry-run
+python3 -m runners.generic --config workspaces/<name>/workspace.config.json --open-tasks --dry-run
 ```
 
 Features:
@@ -136,7 +136,7 @@ Key tools:
 
 ```bash
 npm run check   # Syntax validation
-npm test        # 40 determinism tests
+npm test        # Node determinism tests + generic runner tests
 ```
 
 ## Registration

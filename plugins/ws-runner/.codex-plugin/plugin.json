@@ -1,9 +1,9 @@
 {
   "name": "ws-runner",
-  "version": "0.1.0+codex.20260714022845",
-  "description": "Plan, track, and execute centralized ecosystem tasks through Codex chat with MCP-backed tools.",
+  "version": "0.1.0+codex.20260719200343",
+  "description": "Plan, track, and execute centralized workspace tasks through Codex chat with MCP-backed tools.",
   "author": {
-    "name": "Ecosystem AI Runner",
+    "name": "Workspace Runner",
     "email": "support@example.com",
     "url": "https://example.com/ws-runner"
   },
@@ -20,10 +20,10 @@
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "Ecosystem AI Runner",
-    "shortDescription": "Manage ecosystem tasks from Codex chat",
+    "displayName": "Workspace Runner",
+    "shortDescription": "Manage workspace tasks from Codex chat",
     "longDescription": "Plan centralized ecosystem tasks, load active task context, update task status, and explicitly run isolated runner scopes through MCP tools while keeping current-chat execution as the default.",
-    "developerName": "Ecosystem AI Runner",
+    "developerName": "Workspace Runner",
     "category": "Coding",
     "capabilities": [
       "Interactive",
@@ -34,7 +34,7 @@
     "termsOfServiceURL": "https://example.com/ws-runner/terms",
     "defaultPrompt": [
       "List open tasks for liguelead-platform.",
-      "Plan this change as ecosystem tasks.",
+      "Plan this change as workspace tasks.",
       "Load this task so we can implement it here."
     ],
     "brandColor": "#0F766E",

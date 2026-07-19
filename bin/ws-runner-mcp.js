@@ -3,6 +3,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const readline = require('node:readline');
 
 const { ensureString, ensureStringArray } = require('../lib/utils');
@@ -22,11 +23,12 @@ const {
   finishTaskExecution,
   loadTaskContext,
 } = require('../lib/tasks');
-const { runWithRunner } = require('../lib/runner');
-const { launchParallel, getParallelStatus, listParallelRuns, MAX_CONCURRENCY } = require('../lib/parallel-runner');
+const { buildRunnerArgs, runWithRunner } = require('../lib/runner');
 const { getMyActivity } = require('../lib/github-activity');
 const { createGitHubProject } = require('../lib/github-project-create');
 const { reconcile } = require('../lib/reconcile');
+
+const MAX_CONCURRENCY = os.cpus().length;
 
 // --- JSON-RPC helpers ---
 
@@ -384,28 +386,18 @@ function getOperatingContext(args) {
   };
 }
 
-// --- Kiro parallel runner ---
+// --- Generic parallel runner ---
 
 const parallelRuns = new Map();
 
 function launchGenericParallel({ ws, args }) {
   const runId = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const pyArgs = ['-m', 'runners.kiro', '--config', ws.configPath, '--run-id', runId, '--no-tui'];
-
-  if (args.taskIds && args.taskIds.length > 0) {
-    for (const id of ensureStringArray(args.taskIds, 'taskIds', true)) {
-      pyArgs.push('--task', id);
-    }
-  } else if (args.scope) {
-    pyArgs.push('--scope', ensureString(args.scope, 'scope'));
-  } else if (args.openTasks) {
-    pyArgs.push('--open-tasks');
-  } else {
-    throw new Error('Provide taskIds, scope, or openTasks: true.');
-  }
-
-  if (args.agent) pyArgs.push('--agent', ensureString(args.agent, 'agent'));
-  if (args.concurrency) pyArgs.push('--concurrency', String(args.concurrency));
+  const normalizedArgs = {
+    ...args,
+    taskIds: args.taskIds ? ensureStringArray(args.taskIds, 'taskIds', true) : undefined,
+    runId,
+  };
+  const pyArgs = buildRunnerArgs(ws, normalizedArgs);
 
   const logsDir = path.join(ROOT, 'workspaces', ws.directoryName, 'runs', runId);
   fs.mkdirSync(logsDir, { recursive: true });
@@ -487,10 +479,7 @@ function callTool(name, args = {}) {
     }
     case 'parallel_status': {
       const run = parallelRuns.get(args.runId);
-      if (!run) {
-        // Try Node parallel runner (legacy)
-        return getParallelStatus(args.runId, args.taskId);
-      }
+      if (!run) throw new Error(`Parallel run "${args.runId}" was not found in this MCP process.`);
       const result = { ...run };
       const logPath = path.join(run.logsDir, 'orchestrator.log');
       if (fs.existsSync(logPath)) {
@@ -500,9 +489,7 @@ function callTool(name, args = {}) {
       return result;
     }
     case 'list_parallel_runs': {
-      const nodeRuns = listParallelRuns();
-      const pyRuns = [...parallelRuns.values()].map((r) => ({ runId: r.runId, workspace: r.workspace, agent: r.agent, status: r.status, pid: r.pid, startedAt: r.startedAt }));
-      return [...nodeRuns.map((r) => ({ ...r, type: 'legacy-node' })), ...pyRuns];
+      return [...parallelRuns.values()].map((r) => ({ runId: r.runId, workspace: r.workspace, agent: r.agent, status: r.status, pid: r.pid, startedAt: r.startedAt }));
     }
     case 'get_my_activity': {
       const ws = getWorkspace(resolveWsArg(args));

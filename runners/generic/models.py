@@ -106,6 +106,7 @@ class Run:
     concurrency: int
     agent: Optional[AgentConfig] = None
     tasks: dict[str, TaskRun] = field(default_factory=dict)
+    satisfied_dependencies: set[str] = field(default_factory=set)
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
 

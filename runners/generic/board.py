@@ -1,4 +1,4 @@
-"""GitHub Project board status management for kiro runner."""
+"""GitHub Project board status management for the generic runner."""
 from __future__ import annotations
 
 import json

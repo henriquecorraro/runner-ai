@@ -1,11 +1,11 @@
 ---
 name: ws-runner
-description: "Use when working with centralized ecosystem tasks through the Ecosystem AI Runner plugin. Applies to planning, creating, loading, executing, updating, or closing ecosystem tasks from the AI chat (Codex or Claude Code); prefer MCP tools and execute in the current chat by default."
+description: "Use when working with centralized workspace tasks through the Workspace Runner plugin. Applies to planning, creating, loading, executing, updating, or closing workspace tasks from the AI chat (Codex or Claude Code); prefer MCP tools and execute in the current chat by default."
 ---
 
-# Ecosystem AI Runner Plugin
+# Workspace Runner Plugin
 
-Use this plugin skill when the user asks to plan, inspect, execute, or close ecosystem tasks.
+Use this plugin skill when the user asks to plan, inspect, execute, or close workspace tasks.
 
 ## Default Behavior
 
@@ -22,8 +22,8 @@ Use this plugin skill when the user asks to plan, inspect, execute, or close eco
 ## Tool Routing
 
 - Use `get_operating_context` before planning or executing ecosystem work.
-- Use `list_ecosystems`, `list_tasks`, and `get_task` to discover and load task context.
-- Use `create_ecosystem` for deterministic ecosystem creation. If the user did not provide a GitHub Project URL, ask for it before calling the tool unless the user explicitly confirms the ecosystem does not need a Project; then pass `skipGithubProject: true`.
+- Use `list_workspaces`, `list_tasks`, and `get_task` to discover and load task context.
+- Use `create_workspace` for deterministic workspace creation. If the user did not provide a GitHub Project URL, ask for it before calling the tool unless the user explicitly confirms the workspace does not need a Project; then pass `skipGithubProject: true`.
 - Use `remember_active_tasks` when the chat has established a task set that future references should use.
 - Use `create_task` for straightforward structured task creation; when `githubProject` is configured it runs all-or-fail GitHub sync, creates GitHub issues in every linked repository, adds the primary issue to the Project in `Todo`, assigns every issue to the authenticated user, and only then records the local task.
 - For current-chat execution, use `start_task_execution` before implementation and `finish_task_execution` after implementation.
