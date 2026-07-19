@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from .models import WorkspaceConfig, GitHubProject, Repository, TaskDef
+from .models import WorkspaceConfig, GitHubProject, Repository, TaskDef, AgentConfig
 
 ACTIONABLE_STATUSES = {"open", "needs-rework"}
 
@@ -42,8 +42,7 @@ def load_workspace(config_path: str) -> WorkspaceConfig:
         number = gh_raw.get("number", 0)
         # Parse from URL if not explicitly set
         if not owner or not number:
-            import re as _re
-            m = _re.match(r"https://github\.com/(orgs|users)/([^/]+)/projects/(\d+)", gh_raw["url"])
+            m = re.match(r"https://github\.com/(orgs|users)/([^/]+)/projects/(\d+)", gh_raw["url"])
             if m:
                 owner_type = "organization" if m.group(1) == "orgs" else "user"
                 owner = owner or m.group(2)
@@ -55,6 +54,20 @@ def load_workspace(config_path: str) -> WorkspaceConfig:
             number=number,
         )
 
+    # Load agents from config
+    agents: dict[str, AgentConfig] = {}
+    for agent_name, agent_raw in raw.get("agents", {}).items():
+        agents[agent_name] = AgentConfig(
+            name=agent_name,
+            command=agent_raw.get("command", agent_name),
+            args=agent_raw.get("args", []),
+            type=agent_raw.get("type"),
+            model=agent_raw.get("model"),
+            env=agent_raw.get("env", {}),
+        )
+
+    default_agent = raw.get("defaultAgent", "codex")
+
     return WorkspaceConfig(
         name=raw["name"],
         config_path=str(p),
@@ -65,6 +78,8 @@ def load_workspace(config_path: str) -> WorkspaceConfig:
         skills_dir=str(skills_dir),
         repositories=repos,
         github_project=github_project,
+        default_agent=default_agent,
+        agents=agents,
     )
 
 
@@ -139,6 +154,8 @@ def load_tasks(workspace: WorkspaceConfig, status_filter: Optional[set[str]] = N
         return []
     tasks = []
     for f in sorted(tasks_dir.glob("*.md")):
+        if f.name.endswith(".context.md"):
+            continue  # Skip context snapshot files
         task = parse_task_file(str(f))
         if status_filter and task.status not in status_filter:
             continue
