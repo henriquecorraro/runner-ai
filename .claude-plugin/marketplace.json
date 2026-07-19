@@ -1,15 +1,15 @@
 {
-  "name": "ecosystem-ai-runner-local",
+  "name": "ws-runner-local",
   "description": "Local marketplace for the Ecosystem AI Runner plugin (Claude Code).",
   "owner": {
     "name": "Ecosystem AI Runner",
     "email": "support@example.com",
-    "url": "https://example.com/ecosystem-ai-runner"
+    "url": "https://example.com/ws-runner"
   },
   "plugins": [
     {
-      "name": "ecosystem-ai-runner",
-      "source": "./plugins/ecosystem-ai-runner",
+      "name": "ws-runner",
+      "source": "./plugins/ws-runner",
       "description": "Plan, track, and execute centralized ecosystem tasks through Claude Code with MCP-backed tools.",
       "category": "productivity",
       "keywords": [

@@ -256,24 +256,24 @@ the runner unless the user chooses runner execution.
 
 ## Codex Plugin
 
-The local plugin wrapper lives at `plugins/workspace-ai-runner/`.
+The local plugin wrapper lives at `plugins/ws-runner/`.
 
 Register the marketplace:
 
 ```bash
-codex plugin marketplace add /home/rick/projetos/workspace-ai-runner
+codex plugin marketplace add /home/rick/projetos/ws-runner
 ```
 
 The plugin includes:
 
 - `.codex-plugin/plugin.json`: plugin metadata
 - `.mcp.json`: MCP server configuration
-- `skills/workspace-ai-runner/SKILL.md`: plugin operating instructions
+- `skills/ws-runner/SKILL.md`: plugin operating instructions
 
 Direct MCP registration remains available:
 
 ```bash
-codex mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
+codex mcp add ws-runner -- node /home/rick/projetos/ws-runner/bin/workspace-ai-mcp.js
 ```
 
 ## Execution Model

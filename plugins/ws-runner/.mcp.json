@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "ws-runner": {
+      "command": "node",
+      "args": [
+        "/home/rick/projetos/ws-runner/bin/ws-runner-mcp.js"
+      ]
+    }
+  }
+}

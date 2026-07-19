@@ -1,6 +1,6 @@
 # GitHub Token Setup for Workspace AI Runner
 
-Este guia explica como configurar o token do GitHub CLI (`gh`) para que o workspace-ai-runner consiga criar e mover cards no GitHub Projects v2.
+Este guia explica como configurar o token do GitHub CLI (`gh`) para que o ws-runner consiga criar e mover cards no GitHub Projects v2.
 
 ## Scopes necessários
 

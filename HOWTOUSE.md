@@ -118,14 +118,14 @@ done
 
 **Codex:**
 ```bash
-codex plugin marketplace add /home/rick/projetos/workspace-ai-runner
+codex plugin marketplace add /home/rick/projetos/ws-runner
 # or direct MCP:
-codex mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
+codex mcp add ws-runner -- node /home/rick/projetos/ws-runner/bin/workspace-ai-mcp.js
 ```
 
 **Claude Code:**
 ```bash
-claude mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
+claude mcp add ws-runner -- node /home/rick/projetos/ws-runner/bin/workspace-ai-mcp.js
 ```
 
 ## After Execution

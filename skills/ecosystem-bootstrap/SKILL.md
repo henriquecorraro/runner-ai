@@ -58,7 +58,7 @@ that the tool input does not already provide.
 - Do not infer or pre-create tasks during bootstrap, even if likely feature flows are obvious.
 - Leave task grouping, `scope`, and execution planning to `workspace-task-factory`.
 - If docs are weak, record the gap and suggest a follow-up docs task strategy; do not create those tasks during bootstrap unless the user explicitly asks for it.
-- Any future docs generated from that follow-up task must be written in the affected repository, not inside `workspace-ai-runner`.
+- Any future docs generated from that follow-up task must be written in the affected repository, not inside `ws-runner`.
 - Put repo-specific docs and validation hints in `workspace.config.json`.
 - Put the workspace GitHub Project under `githubProject.url` when the user provides it or it can be discovered. If no Project exists yet, omit `githubProject` and state that task-card sync cannot be enabled until the URL is configured.
 - When using `create_workspace`, pass `skipGithubProject: true` only after the user explicitly confirms that no GitHub Project is needed.

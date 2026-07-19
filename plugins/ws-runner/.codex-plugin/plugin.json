@@ -1,14 +1,14 @@
 {
-  "name": "ecosystem-ai-runner",
+  "name": "ws-runner",
   "version": "0.1.0+codex.20260714022845",
   "description": "Plan, track, and execute centralized ecosystem tasks through Codex chat with MCP-backed tools.",
   "author": {
     "name": "Ecosystem AI Runner",
     "email": "support@example.com",
-    "url": "https://example.com/ecosystem-ai-runner"
+    "url": "https://example.com/ws-runner"
   },
-  "homepage": "https://example.com/ecosystem-ai-runner",
-  "repository": "https://example.com/ecosystem-ai-runner",
+  "homepage": "https://example.com/ws-runner",
+  "repository": "https://example.com/ws-runner",
   "license": "MIT",
   "keywords": [
     "ecosystem",
@@ -29,9 +29,9 @@
       "Interactive",
       "Write"
     ],
-    "websiteURL": "https://example.com/ecosystem-ai-runner",
-    "privacyPolicyURL": "https://example.com/ecosystem-ai-runner/privacy",
-    "termsOfServiceURL": "https://example.com/ecosystem-ai-runner/terms",
+    "websiteURL": "https://example.com/ws-runner",
+    "privacyPolicyURL": "https://example.com/ws-runner/privacy",
+    "termsOfServiceURL": "https://example.com/ws-runner/terms",
     "defaultPrompt": [
       "List open tasks for liguelead-platform.",
       "Plan this change as ecosystem tasks.",

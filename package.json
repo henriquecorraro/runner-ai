@@ -5,14 +5,14 @@
   "description": "Generic parallel runner for AI agent execution across multi-repository workspaces.",
   "type": "commonjs",
   "bin": {
-    "ws-runner": "bin/ecosystem-ai-runner.js",
-    "ws-runner-mcp": "bin/ecosystem-ai-mcp.js"
+    "ws-runner": "bin/ws-runner.js",
+    "ws-runner-mcp": "bin/ws-runner-mcp.js"
   },
   "scripts": {
-    "tasks": "node bin/ecosystem-ai-runner.js",
-    "mcp": "node bin/ecosystem-ai-mcp.js",
+    "tasks": "node bin/ws-runner.js",
+    "mcp": "node bin/ws-runner-mcp.js",
     "test": "node test-determinism.js",
-    "check": "node --check lib/utils.js && node --check lib/frontmatter.js && node --check lib/github-project.js && node --check lib/github-sync.js && node --check lib/workspace-create.js && node --check lib/workspaces.js && node --check lib/tasks.js && node --check lib/runner.js && node --check lib/parallel-runner.js && node --check lib/reconcile.js && node --check bin/ecosystem-ai-runner.js && node --check bin/ecosystem-ai-mcp.js"
+    "check": "node --check lib/utils.js && node --check lib/frontmatter.js && node --check lib/github-project.js && node --check lib/github-sync.js && node --check lib/workspace-create.js && node --check lib/workspaces.js && node --check lib/tasks.js && node --check lib/runner.js && node --check lib/parallel-runner.js && node --check lib/reconcile.js && node --check bin/ws-runner.js && node --check bin/ws-runner-mcp.js"
   },
   "engines": {
     "node": ">=18"

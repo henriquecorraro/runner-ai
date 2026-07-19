@@ -1,5 +1,5 @@
 ---
-name: ecosystem-ai-runner
+name: ws-runner
 description: "Use when working with centralized ecosystem tasks through the Ecosystem AI Runner plugin. Applies to planning, creating, loading, executing, updating, or closing ecosystem tasks from the AI chat (Codex or Claude Code); prefer MCP tools and execute in the current chat by default."
 ---
 
@@ -9,7 +9,7 @@ Use this plugin skill when the user asks to plan, inspect, execute, or close eco
 
 ## Default Behavior
 
-- Use MCP tools from the `ecosystem-ai-runner` server when available.
+- Use MCP tools from the `ws-runner` server when available.
 - ENGLISH FIRST for ecosystem SDD: write task files, task titles, task body
   sections, textual frontmatter values, `Task Status` entries, SDD README
   updates, and run prompts in English. Do not mirror the user's chat language
@@ -33,7 +33,7 @@ Use this plugin skill when the user asks to plan, inspect, execute, or close eco
 
 ## Repository Rules
 
-- Centralized planning lives in `ecosystem-ai-runner`.
+- Centralized planning lives in `ws-runner`.
 - Stable human docs live in the owning repository.
 - Do not revert unrelated user changes.
 - Run the narrowest useful validation for touched repositories.

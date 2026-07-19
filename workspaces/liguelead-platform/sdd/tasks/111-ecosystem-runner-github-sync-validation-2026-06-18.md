@@ -27,7 +27,7 @@ github_project_status: Done
 ---
 
 Goal:
-- Validate ecosystem-ai-runner deterministic GitHub sync lifecycle with real GitHub artifacts.
+- Validate ws-runner deterministic GitHub sync lifecycle with real GitHub artifacts.
 
 Checks:
 - Confirm one issue was created in each linked repository.

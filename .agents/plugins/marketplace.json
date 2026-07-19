@@ -1,14 +1,14 @@
 {
-  "name": "ecosystem-ai-runner-local",
+  "name": "ws-runner-local",
   "interface": {
     "displayName": "Local Ecosystem AI Runner"
   },
   "plugins": [
     {
-      "name": "ecosystem-ai-runner",
+      "name": "ws-runner",
       "source": {
         "source": "local",
-        "path": "./plugins/ecosystem-ai-runner"
+        "path": "./plugins/ws-runner"
       },
       "policy": {
         "installation": "AVAILABLE",

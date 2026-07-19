@@ -9,7 +9,7 @@ If you are an AI agent reading this repository after clone, read [HOWTOUSE.md](H
 ## Structure
 
 ```text
-workspace-ai-runner/
+ws-runner/
   bin/
   docs/
   skills/
@@ -106,39 +106,39 @@ and operating skill.
 Register the local plugin marketplace:
 
 ```bash
-codex plugin marketplace add /home/rick/projetos/workspace-ai-runner
+codex plugin marketplace add /home/rick/projetos/ws-runner
 ```
 
 The plugin lives at:
 
 ```text
-plugins/workspace-ai-runner/
+plugins/ws-runner/
 ```
 
 For direct MCP usage without relying on plugin UI activation, register the MCP
 server explicitly:
 
 ```bash
-codex mcp add workspace-ai-runner -- node /home/rick/projetos/workspace-ai-runner/bin/workspace-ai-mcp.js
+codex mcp add ws-runner -- node /home/rick/projetos/ws-runner/bin/workspace-ai-mcp.js
 ```
 
 Then start Codex from this repo:
 
 ```bash
-codex -C /home/rick/projetos/workspace-ai-runner
+codex -C /home/rick/projetos/ws-runner
 ```
 
 ## Claude Code Plugin
 
 The same plugin folder also exposes a Claude Code manifest at
-`plugins/workspace-ai-runner/.claude-plugin/plugin.json`, alongside a local
+`plugins/ws-runner/.claude-plugin/plugin.json`, alongside a local
 marketplace declaration at `.claude-plugin/marketplace.json`.
 
 Register the local marketplace and install the plugin from inside Claude Code:
 
 ```text
-/plugin marketplace add /home/luiz/liguelead/runner-ai
-/plugin install workspace-ai-runner@workspace-ai-runner-local
+/plugin marketplace add /home/luiz/liguelead/ws-runner
+/plugin install ws-runner@ws-runner-local
 ```
 
 The plugin manifest declares the MCP server inline using `${CLAUDE_PLUGIN_ROOT}`,
@@ -148,7 +148,7 @@ For direct MCP usage without going through the plugin UI, register the MCP
 server explicitly instead:
 
 ```bash
-claude mcp add workspace-ai-runner -- node /home/luiz/liguelead/runner-ai/bin/workspace-ai-mcp.js
+claude mcp add ws-runner -- node /home/luiz/liguelead/ws-runner/bin/workspace-ai-mcp.js
 ```
 
 ## Installing Skills
