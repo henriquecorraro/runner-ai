@@ -6,6 +6,41 @@ The runner is agent-agnostic: it reads the agent command from `workspace.config.
 
 If you are an AI agent reading this repository after clone, read [HOWTOUSE.md](HOWTOUSE.md) first.
 
+## Why ws-runner
+
+Most AI-agent workflows repeatedly pay for context that was already discovered: the agent re-reads repositories, reconstructs decisions, and starts isolated sessions even when the current conversation already contains what it needs. `ws-runner` treats context as a reusable workspace artifact and puts explicit gates around when new agent processes are created.
+
+### Token-efficient by design
+
+- **Current chat first** — tasks are executed in the conversation that planned them by default, reusing the existing brainstorm and repository analysis.
+- **Isolated execution is opt-in** — the runner starts another agent session only when the user explicitly chooses isolation or parallel execution.
+- **Context snapshots** — `.context.md` files cache relevant code knowledge, contracts, decisions, and pitfalls so executor agents do not rediscover them from scratch.
+- **Machine-oriented task bodies** — local task files contain terse, declarative implementation specs instead of narrative context.
+- **Human intent stays separate** — the WHY and decision history live on the GitHub card, while agents receive only the execution material they need.
+- **Scoped prompts and short outputs** — each run targets declared repositories and produces a compact operational summary plus task snapshots.
+
+### Clear responsibility boundaries
+
+| Building block | Responsibility |
+|----------------|----------------|
+| **Skill** | Teaches the agent the operating policy and routes it to the correct workflow |
+| **MCP server** | Exposes typed tools for workspace, task, lifecycle, GitHub, and runner operations |
+| **Centralized SDD** | Stores the persistent, machine-readable task queue outside application repositories |
+| **Context snapshot** | Preserves pre-computed execution knowledge for later agents or sessions |
+| **Runner** | Provides isolated, dependency-aware, parallel agent execution when requested |
+| **Plugin** | Packages the skill and MCP configuration for Codex or Claude Code |
+| **Core libraries** | Enforce state transitions, atomic writes, schema validation, synchronization, and rollback |
+| **GitHub Project** | Holds human-facing intent, issue links, progress, review state, and closeout information |
+
+### Safe multi-repository orchestration
+
+- Repositories remain focused on code and stable human documentation; workspace planning stays centralized here.
+- Tasks declare repository ownership, validation commands, documentation targets, and dependencies.
+- Task lifecycle gates prevent work from skipping implementation, review, or developer validation.
+- GitHub task creation is all-or-fail, with cleanup of partially created issues or Project items on failure.
+- Cross-repository branch creation rolls back earlier repositories if a later repository fails.
+- Active task memory and run history survive MCP or agent-session boundaries.
+
 ## Structure
 
 ```text
@@ -24,14 +59,13 @@ ws-runner/
       runs/
 ```
 
-## Core Idea
+## Workflow
 
-- Repositories stay focused on code; workspace planning stays centralized here
-- Tasks are machine-readable specs for AI agents (zero prose, declarative)
-- GitHub cards hold human-readable context (intent, WHY)
-- Context snapshots (`.context.md`) cache knowledge for executor agents
-- The runner detects which agent is calling and configures itself accordingly
-- Work follows: create workspace → create tasks → execute → validate → close
+```text
+create workspace → plan tasks → execute → review → developer validation → close
+```
+
+The runner detects the invoking agent and model when a workspace is created. From there, work can remain in the current chat to reuse context or move to the isolated runner when explicit execution history, parallelism, or context separation is valuable.
 
 ## Workspace Config
 
