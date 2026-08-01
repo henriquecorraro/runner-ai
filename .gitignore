@@ -18,3 +18,4 @@ workspaces/
 .idea/
 .vscode/
 __pycache__/
+**/cache/context.sqlite*

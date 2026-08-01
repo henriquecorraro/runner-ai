@@ -27,7 +27,7 @@ Most AI-agent workflows repeatedly pay for context that was already discovered: 
 | **MCP server** | Exposes typed tools for workspace, task, lifecycle, GitHub, and runner operations |
 | **Centralized SDD** | Stores the persistent, machine-readable task queue outside application repositories |
 | **Context snapshot** | Preserves pre-computed execution knowledge for later agents or sessions |
-| **Runner** | Provides isolated, dependency-aware, parallel agent execution when requested |
+| **Runner** | Provides dependency-aware, repository-conflict-safe parallel agent execution when requested |
 | **Plugin** | Packages the skill and MCP configuration for Codex or Claude Code |
 | **Core libraries** | Enforce state transitions, atomic writes, schema validation, synchronization, and rollback |
 | **GitHub Project** | Holds human-facing intent, issue links, progress, review state, and closeout information |
@@ -39,6 +39,7 @@ Most AI-agent workflows repeatedly pay for context that was already discovered: 
 - Task lifecycle gates prevent work from skipping implementation, review, or developer validation.
 - GitHub task creation is all-or-fail, with cleanup of partially created issues or Project items on failure.
 - Cross-repository branch creation rolls back earlier repositories if a later repository fails.
+- Parallel tasks that share a repository are serialized; disjoint repositories can still run concurrently.
 - Active task memory and run history survive MCP or agent-session boundaries.
 
 ## Structure
@@ -78,16 +79,42 @@ The runner detects the invoking agent and model when a workspace is created. Fro
       "type": "kiro",
       "command": "kiro-cli",
       "args": ["chat", "--no-interactive", "--trust-all-tools"],
-      "model": "claude-opus-4"
+      "model": "claude-opus-4",
+      "modelRoutes": [
+        { "maxPromptTokens": 8000, "model": "claude-sonnet-4" }
+      ],
+      "timeoutSeconds": 3600
     },
     "codex": {
+      "type": "codex",
       "command": "codex",
-      "args": ["exec", "--ephemeral"]
+      "codex": {
+        "sessionPolicy": "task",
+        "resumeOnNeedsRework": true,
+        "models": {
+          "mechanical": "gpt-5.6-luna",
+          "standard": "gpt-5.6-terra",
+          "deep": "gpt-5.6-sol"
+        },
+        "reasoning": {
+          "mechanical": "low",
+          "standard": "medium",
+          "deep": "high"
+        }
+      }
     },
     "claude-code": {
       "command": "claude",
-      "args": ["-p"]
+      "args": ["-p"],
+      "model": "configured-claude-model",
+      "allowedModels": ["configured-claude-model", "lower-cost-claude-model"]
     }
+  },
+  "tokenPolicy": {
+    "contextBudgetTokens": 4000,
+    "reviewDiffBudgetTokens": 2000,
+    "batchRelatedTasks": false,
+    "batchSize": 3
   },
   "githubProject": {
     "url": "https://github.com/orgs/<org>/projects/<number>"
@@ -100,8 +127,33 @@ The runner detects the invoking agent and model when a workspace is created. Fro
 
 Key points:
 - `defaultAgent` is auto-detected from the invoking LLM at workspace creation
-- `model` is persisted from the current session's model
-- Any CLI that accepts a prompt as last argument works as an agent
+- Generic agents can persist the current session model; the dedicated Codex adapter uses its task profile map instead
+- Codex tasks route by `execution_profile`, `risk`, and `complexity` before using prompt-size `modelRoutes`
+- Codex defaults to Luna/low for mechanical work, Terra/medium for standard work, and Sol/high for deep or critical work
+- `preferred_model` and `reasoning_effort` in task frontmatter are explicit per-task overrides
+- The Codex adapter uses JSONL, structured output, measured usage, and resumes only an unchanged `needs-rework` task thread
+- `modelRoutes` remains the compatibility fallback when a task has no routing metadata
+- `tokenPolicy` caps context/review payloads and optionally batches related tasks
+- Other CLIs continue to use the generic prompt-as-last-argument contract
+
+### Per-task agent routing
+
+Tasks select an allowlisted workspace agent without embedding executable commands:
+
+```yaml
+execution_agent: codex
+routing_policy: pinned
+execution_profile: deep
+preferred_model: gpt-5.6-sol
+reasoning_effort: high
+```
+
+- `pinned` requires the declared agent and rejects unsupported models
+- `preferred` uses the declared agent/model with configured fallback
+- `portable` forbids agent/model pins and routes from profile, complexity, and risk
+- `allowedModels`, `model`, `modelRoutes`, and Codex profile models form each agent's model allowlist
+- `--agent` overrides preferred/portable routing; replacing a different pinned agent also requires `--allow-agent-override`
+- related-task batches require the same resolved agent and routing tier
 
 ## Task Lifecycle
 
@@ -132,13 +184,21 @@ python3 -m runners.generic --config workspaces/<name>/workspace.config.json --sc
 
 # Dry run
 python3 -m runners.generic --config workspaces/<name>/workspace.config.json --open-tasks --dry-run
+
+# Reuse one agent session for related tasks with identical repository sets
+python3 -m runners.generic --config workspaces/<name>/workspace.config.json --open-tasks --batch-related --batch-size 3
 ```
 
 Features:
 - Dependency resolution: tasks wait for `dependsOn` to complete
 - Failed deps → dependent tasks are skipped
-- Board sync: In Progress on start, Testing on success
+- Repository conflicts → tasks sharing a checkout are serialized
+- Output contract validation: exit code zero alone is not success
+- Local lifecycle sync: `in-progress` on start, `implemented/testing` on success, `needs-rework` on failure
+- Board sync: In Progress on start, Testing on success, Todo on failure
 - Any agent from workspace config (generic spawner)
+- Optional related-task batching and prompt-size model routing
+- Estimated token telemetry in `summary.json` and SQLite
 
 ## MCP Server
 
@@ -150,7 +210,10 @@ npm run mcp
 Key tools:
 - `create_workspace` — auto-detects agent + model, requires GitHub Project decision
 - `create_task` — all-or-fail GitHub sync, accepts `intent` (card-only) and `context` (snapshot)
-- `get_task` — returns task + execution context if `.context.md` exists
+- `get_task` — returns task + budgeted cached context and a thin manifest
+- `get_task_diff` — paginates review diffs instead of returning an unbounded patch
+- `get_token_usage` — aggregates estimated prompt/output/cache usage
+- `compact_task_context` — moves a snapshot to the content store and leaves a thin manifest
 - `start_task_execution` / `finish_task_execution` — lifecycle gates with review loop
 - `run_parallel` — spawns Python async runner with workspace agent config
 - `set_task_status` — state machine enforced, PR handoff on close
@@ -159,12 +222,29 @@ Key tools:
 ## Determinism Guarantees
 
 - Atomic writes (rename pattern) — no corruption on crash
-- O_EXCL task creation — race-condition proof
+- Workspace lock + task-id uniqueness + O_EXCL task creation
 - State machine — invalid transitions rejected
-- Cross-repo branch rollback — if branch fails in repo N, repos 1..N-1 reverted
-- Lifecycle gates — finish requires start
-- Schema validation — unknown/missing frontmatter fields rejected
+- Cross-repo branch rollback — only branches created by the current operation can be deleted
+- Lifecycle gates — local execution state makes finish independent from GitHub availability
+- Shared schema validation — Node and Python reject the same malformed frontmatter
+- Runner contract — timeout, structured output, and board sync must all succeed
 - Active tasks persisted to disk — survives MCP restart
+
+## Token Economy
+
+The runner uses a local SQLite/FTS5 cache at `workspaces/<name>/cache/context.sqlite`.
+Context units are keyed by content, analyzer version, and repository HEADs; changed
+snapshots or commits are re-indexed without TTL. The database also stores compact
+policy capsules and estimated per-run usage. Values are estimates because generic
+agent CLIs do not expose one portable billing-token contract.
+
+The main savings are deterministic:
+
+- task specifications appear once per prompt, even for multiple repositories
+- context is selected with FTS5 and capped by `contextBudgetTokens`
+- review responses contain manifests/previews; full patches use `get_task_diff` pages
+- related ready tasks can share one agent process and one fixed policy prompt
+- configured `modelRoutes` can select a cheaper model for smaller prompts
 
 ## Testing
 

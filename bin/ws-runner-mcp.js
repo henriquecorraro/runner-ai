@@ -5,8 +5,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const readline = require('node:readline');
+const { spawnSync } = require('node:child_process');
 
-const { ensureString, ensureStringArray } = require('../lib/utils');
+const { ensureString, ensureStringArray, ensurePositiveInteger } = require('../lib/utils');
+const { writeFileAtomic } = require('../lib/frontmatter');
 const { listWorkspaces, getWorkspace, ROOT } = require('../lib/workspaces');
 const { createWorkspace } = require('../lib/workspace-create');
 const {
@@ -21,6 +23,8 @@ const {
   setTaskBoardStatus,
   startTaskExecution,
   finishTaskExecution,
+  getTaskDiff,
+  compactTaskContext,
   loadTaskContext,
 } = require('../lib/tasks');
 const { buildRunnerArgs, runWithRunner } = require('../lib/runner');
@@ -72,8 +76,8 @@ function resolveWsArg(args) {
 const tools = [
   {
     name: 'get_operating_context',
-    description: 'Return the ws-runner operating rules. Use this before planning or executing workspace tasks.',
-    inputSchema: { type: 'object', properties: { workspace: { type: 'string', description: 'Optional workspace name.' } } },
+    description: 'Return compact operating policy; verbose adds full authoring rules.',
+    inputSchema: { type: 'object', properties: { workspace: { type: 'string' }, verbose: { type: 'boolean' } } },
   },
   {
     name: 'list_workspaces',
@@ -82,7 +86,7 @@ const tools = [
   },
   {
     name: 'create_workspace',
-    description: 'Create a centralized workspace directory deterministically. If githubProject.url is not known, ask the user for it before calling this tool, unless the user explicitly says no Project is needed; in that case pass skipGithubProject: true.',
+    description: 'Create a workspace. Requires a Project URL or explicit skipGithubProject.',
     inputSchema: {
       type: 'object',
       required: ['name', 'repositories'],
@@ -116,6 +120,7 @@ const tools = [
         agents: { type: 'object' },
         sddRoot: { type: 'string' },
         historyRoot: { type: 'string' },
+        tokenPolicy: { type: 'object' },
         docsQualityBaseline: {
           type: 'array',
           items: {
@@ -143,8 +148,26 @@ const tools = [
   },
   {
     name: 'get_task',
-    description: 'Load one task for execution in the current chat/agent.',
-    inputSchema: { type: 'object', required: ['workspace', 'task'], properties: { workspace: { type: 'string' }, task: { type: 'string', description: 'Task id, filename, or unique fragment.' } } },
+    description: 'Load a task plus budgeted cached context.',
+    inputSchema: { type: 'object', required: ['workspace', 'task'], properties: { workspace: { type: 'string' }, task: { type: 'string' }, contextBudgetTokens: { type: 'integer', minimum: 1, maximum: 32000 } } },
+  },
+  {
+    name: 'get_task_diff',
+    description: 'Read one paginated repository diff for task review.',
+    inputSchema: {
+      type: 'object', required: ['workspace', 'task'],
+      properties: { workspace: { type: 'string' }, task: { type: 'string' }, repository: { type: 'string' }, offset: { type: 'integer', minimum: 0 }, maxTokens: { type: 'integer', minimum: 1, maximum: 12000 } },
+    },
+  },
+  {
+    name: 'get_token_usage',
+    description: 'Return measured or estimated runner token usage and cache effectiveness.',
+    inputSchema: { type: 'object', required: ['workspace'], properties: { workspace: { type: 'string' } } },
+  },
+  {
+    name: 'compact_task_context',
+    description: 'Move a full context snapshot to the content store and leave a thin manifest.',
+    inputSchema: { type: 'object', required: ['workspace', 'task'], properties: { workspace: { type: 'string' }, task: { type: 'string' } } },
   },
   {
     name: 'get_active_tasks',
@@ -158,15 +181,15 @@ const tools = [
   },
   {
     name: 'create_task',
-    description: 'Create a centralized task file. Deterministic GitHub sync is all-or-fail: when githubProject is configured, preflight every linked repository, create GitHub issues in all linked repositories, assign every issue to the authenticated user, add the primary issue to the Project, and move it to Todo before recording the local task. Titles and body must be in English. Body must be terse machine-readable specs for AI agent execution: declarative, structured, zero prose. Follow taskWritingRules from get_operating_context. The intent field is optional human-readable context (the WHY behind the task) that appears only on the GitHub card, never in the local task file.',
+    description: 'Create an English, machine-oriented task with all-or-fail GitHub sync.',
     inputSchema: {
       type: 'object', required: ['workspace', 'title', 'repositories', 'body'],
-      properties: { workspace: { type: 'string' }, id: { type: 'string' }, title: { type: 'string' }, scope: { type: 'string' }, repositories: { type: 'array', items: { type: 'string' } }, validation: { type: 'array', items: { type: 'string' } }, docsTargets: { type: 'array', items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'string' } }, body: { type: 'string' }, intent: { type: 'string', description: 'Human-readable context for the GitHub card: the WHY behind this task, how the decision was reached, the conversation summary. Goes only to the card, never to the local task file.' }, context: { type: 'string', description: 'Pre-computed execution context snapshot for the executor agent. Include: relevant file contents, type signatures, current state of components, architectural decisions, and pitfalls discussed. Saved as .context.md sibling file. The executor loads this automatically via get_task instead of re-reading the codebase from scratch — saves tokens and execution time.' } },
+      properties: { workspace: { type: 'string' }, id: { type: 'string' }, title: { type: 'string' }, scope: { type: 'string' }, repositories: { type: 'array', items: { type: 'string' } }, complexity: { type: 'string', enum: ['low', 'medium', 'high'] }, risk: { type: 'string', enum: ['low', 'medium', 'critical'] }, executionProfile: { type: 'string', enum: ['mechanical', 'standard', 'deep'] }, executionAgent: { type: 'string', description: 'Workspace agent id; never a shell command.' }, routingPolicy: { type: 'string', enum: ['pinned', 'preferred', 'portable'] }, preferredModel: { type: 'string' }, reasoningEffort: { type: 'string', enum: ['low', 'medium', 'high', 'xhigh'] }, validation: { type: 'array', items: { type: 'string' } }, docsTargets: { type: 'array', items: { type: 'string' } }, dependsOn: { type: 'array', items: { type: 'string' } }, body: { type: 'string' }, intent: { type: 'string', description: 'Human WHY; GitHub card only.' }, context: { type: 'string', description: 'Reusable code/contracts/decisions snapshot.' } },
     },
   },
   {
     name: 'set_task_status',
-    description: 'Update a task status. Setting implemented moves the GitHub Project item to Testing before recording the local status. Requires userValidated: true for done; done updates the GitHub issue closeout section and moves the Project item to Done.',
+    description: 'Transition task state; done requires user validation and PR handoff.',
     inputSchema: {
       type: 'object',
       required: ['workspace', 'task', 'status'],
@@ -215,7 +238,7 @@ const tools = [
   },
   {
     name: 'set_task_board_status',
-    description: 'Move one task GitHub Project card to Todo, In Progress, Testing, or Done. Use this for current-chat execution lifecycle when not using run_with_runner.',
+    description: 'Move one task card between board lifecycle states.',
     inputSchema: {
       type: 'object',
       required: ['workspace', 'task', 'status'],
@@ -228,7 +251,7 @@ const tools = [
   },
   {
     name: 'start_task_execution',
-    description: 'Deterministically start current-chat execution for one task. Creates a feature branch (feat/<scope>) in all affected repositories, checks out baseBranch, pulls latest, then creates the branch. Moves the GitHub Project item to In Progress.',
+    description: 'Start current-chat execution with cross-repo branch preflight.',
     inputSchema: {
       type: 'object',
       required: ['workspace', 'task'],
@@ -242,7 +265,7 @@ const tools = [
   },
   {
     name: 'finish_task_execution',
-    description: 'Deterministically finish current-chat implementation for one task. By default triggers a review loop: returns the task spec + git diff for comparison without moving to Testing. The agent must review, fix issues, and call again. Only moves to Testing when skipReview: true is passed after user confirmation.',
+    description: 'Start a budgeted review; skipReview only after clean review and user confirmation.',
     inputSchema: {
       type: 'object',
       required: ['workspace', 'task'],
@@ -255,15 +278,15 @@ const tools = [
   },
   {
     name: 'run_with_runner',
-    description: 'Run the isolated workspace runner. Use only after explicit user choice; dryRun defaults to true. Non-dry-run execution moves every selected task to In Progress before execution and to Testing after successful execution.',
+    description: 'Run the isolated runner only after explicit user choice; defaults to dry-run.',
     inputSchema: {
       type: 'object', required: ['workspace', 'selection', 'userConfirmedRunner'],
-      properties: { workspace: { type: 'string' }, selection: { type: 'string', enum: ['task', 'scope', 'feature', 'open-tasks', 'open-scopes'] }, value: { type: 'string' }, agent: { type: 'string' }, dryRun: { type: 'boolean' }, userConfirmedRunner: { type: 'boolean' } },
+      properties: { workspace: { type: 'string' }, selection: { type: 'string', enum: ['task', 'scope', 'feature', 'open-tasks', 'open-scopes'] }, value: { type: 'string' }, agent: { type: 'string' }, allowAgentOverride: { type: 'boolean', description: 'Required to replace a task pinned to another agent.' }, dryRun: { type: 'boolean' }, userConfirmedRunner: { type: 'boolean' } },
     },
   },
   {
     name: 'run_parallel',
-    description: `Launch workspace tasks in parallel (up to ${MAX_CONCURRENCY} physical cores) using the Python async runner. The agent command is read from the workspace config — works with any agent (kiro, codex, claude, etc). Each task runs in its own process, moves its GitHub Project card to In Progress when the worker starts, and moves it to Testing after successful completion. Returns a runId to monitor progress.`,
+    description: `Launch persisted parallel execution (max ${MAX_CONCURRENCY}); serializes shared repositories.`,
     inputSchema: {
       type: 'object', required: ['workspace', 'userConfirmedRunner'],
       properties: {
@@ -271,8 +294,11 @@ const tools = [
         taskIds: { type: 'array', items: { type: 'string' }, description: 'Task IDs to execute. If omitted, use scope or openTasks.' },
         scope: { type: 'string', description: 'Run all actionable tasks in this scope.' },
         openTasks: { type: 'boolean', description: 'Run all open/needs-rework tasks.' },
-        agent: { type: 'string', description: 'Agent name override (must exist in workspace agents config). Default: workspace defaultAgent.' },
-        concurrency: { type: 'number', description: `Max parallel workers. Default: ${MAX_CONCURRENCY} (physical cores).` },
+        agent: { type: 'string', description: 'Explicit agent override; without it, every task resolves its own routing.' },
+        allowAgentOverride: { type: 'boolean', description: 'Allow the explicit agent to replace pinned task routing.' },
+        concurrency: { type: 'integer', minimum: 1, maximum: MAX_CONCURRENCY, description: `Max parallel workers. Default: ${MAX_CONCURRENCY} available CPU cores.` },
+        batchRelatedTasks: { type: 'boolean', description: 'Reuse one agent session for ready tasks with identical repository sets.' },
+        batchSize: { type: 'integer', minimum: 1, maximum: 12 },
         userConfirmedRunner: { type: 'boolean' },
       },
     },
@@ -290,7 +316,7 @@ const tools = [
   },
   {
     name: 'list_parallel_runs',
-    description: 'List all active parallel runs with their progress.',
+    description: 'List in-memory and persisted parallel runs with their progress.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -307,7 +333,7 @@ const tools = [
   },
   {
     name: 'create_github_project',
-    description: 'Create a GitHub Project v2 for a workspace that does not have one. Creates the project with a Status single-select field (Todo, In Progress, Testing, Done) and updates workspace.config.json.',
+    description: 'Create and configure a GitHub Project v2 for a workspace.',
     inputSchema: {
       type: 'object', required: ['workspace', 'title'],
       properties: {
@@ -318,7 +344,7 @@ const tools = [
   },
   {
     name: 'reconcile_workspace',
-    description: 'Lightweight bidirectional reconcile between local task files and their GitHub Project cards. Detects drift (status mismatch, externally closed issues, stale frontmatter) and optionally fixes it. Use dryRun: true (default) to preview, dryRun: false to fix.',
+    description: 'Preview or reconcile local/GitHub task drift with an explicit direction.',
     inputSchema: {
       type: 'object', required: ['workspace'],
       properties: {
@@ -342,48 +368,62 @@ function getOperatingContext(args) {
         .map((e) => ({ name: e.name, path: path.join(sharedSkillsDir, e.name, 'SKILL.md') }))
     : [];
 
+  const compactGuidance = [
+    'Write centralized SDD artifacts in English.',
+    'Use current-chat execution by default; isolated runner requires explicit user choice.',
+    'Use lifecycle gates and never mark done before user validation.',
+    'Create tasks with terse specs, human intent, and a reusable context snapshot.',
+    'Classify executable tasks with complexity, risk, and executionProfile for cost-aware model routing.',
+    'Choose executionAgent and preferredModel only from workspace.agents; use pinned, preferred, or portable routingPolicy.',
+    'Fetch large context and diffs incrementally within token budgets.',
+  ];
+  const compactRules = [
+    'Imperative, structured, zero narrative.',
+    'Include exact contracts, paths, validation, and error cases.',
+    'Use tables/code only when they reduce ambiguity.',
+  ];
+  const fullGuidance = [
+    ...compactGuidance,
+    'Use create_workspace for deterministic workspace creation.',
+    'Before create_workspace, ask for a GitHub Project URL unless the user explicitly confirms none is needed.',
+    'With githubProject, create_task synchronizes every linked repository before recording local state.',
+    'finish_task_execution previews a capped diff; use get_task_diff for missing pages.',
+    'Runner success moves tasks to Testing; failures return to needs-rework/Todo.',
+    'When closing, record PR handoff and closeout summary.',
+  ];
+  const fullRules = [
+    ...compactRules,
+    'Tasks are consumed exclusively by AI agents.',
+    'State what to do, constraints, and expected output only.',
+    'Include exact SQL, type shapes, value conversions, and HTTP errors when applicable.',
+    'Mention prohibited common pitfalls.',
+    'Never add narrative Context/WHY sections to local task bodies.',
+  ];
   return {
     repositoryRoot: ROOT,
+    policyVersion: 'compact-v1',
     currentChatDefault: true,
     runnerRequiresExplicitUserChoice: true,
     contextualTaskReferencesUseCurrentConversationFirst: true,
-    guidance: [
-      'ENGLISH FIRST for workspace SDD artifacts.',
-      'Use create_workspace for deterministic workspace creation.',
-      'Before create_workspace, ask for a GitHub Project URL unless the user explicitly confirms no Project is needed; then pass skipGithubProject: true.',
-      'When creating tasks in a workspace with githubProject, create_task is all-or-fail: it preflights every linked repository, creates GitHub issues in every linked repository, assigns every issue to the authenticated user, adds the primary issue to the Project in Todo, and only then records the local task.',
-      'For current-chat execution, use start_task_execution before implementation and finish_task_execution after implementation; these are required lifecycle gates.',
-      'finish_task_execution has a built-in review loop: without skipReview, it returns the task spec + git diff. The agent must compare spec vs implementation, fix bugs, and call finish again. Only pass skipReview: true after the review is clean AND the user confirms.',
-      'For run_with_runner and run_parallel, every selected task card moves to In Progress before execution and Testing when that task succeeds.',
-      'When the user validates and asks to document/close a task, ask whether to skip PR handoff, use the current branch, or create a new branch; then use set_task_status(status="done", userValidated=true) with prHandoff, closeoutSummary, and PR URLs so the GitHub issue is updated and the Project item is moved to Done.',
-      'Use the current chat/agent for task execution by default.',
-      'Resolve contextual task references against the current conversation first.',
-      'Use the runner only when the user explicitly asks.',
-      'Do not mark tasks done until the user confirms validation.',
-      'When creating tasks, always generate an intent field: a human-readable summary of WHY this task exists, the reasoning process, and how the decision was reached in the conversation. The intent goes only to the GitHub card — the local task file stays machine-readable with zero prose.',
-      'When creating tasks, always generate a context field: a pre-computed knowledge snapshot that the executor agent will need. Include relevant file contents read during planning, type signatures, current component state, architectural constraints, and pitfalls discussed. This is saved as a .context.md sibling file and loaded automatically by get_task — it prevents the executor from wasting tokens re-reading the same files.',
-    ],
-    taskWritingRules: [
-      'Tasks are consumed EXCLUSIVELY by AI agents. Never write for humans.',
-      'Terse, declarative, structured. Zero prose, zero motivational context, zero transitions.',
-      'State: what to do, constraints, expected output. Nothing else.',
-      'Use tables for schemas, mappings, and enumerations.',
-      'Use code blocks for SQL, TypeScript types, file paths, and shell commands.',
-      'Include exact SQL queries when DB access is involved.',
-      'Include TypeScript type shapes for request/response contracts.',
-      'Include file paths where code should be created/modified.',
-      'Include static data maps (enums, status codes) inline — never say "see table X".',
-      'Include value conversion rules (e.g., BRL decimal → cents).',
-      'Include error cases and their expected HTTP status codes.',
-      'Mention what NOT to do when there is a common pitfall.',
-      'Never use "Context" sections explaining background, narrative paragraphs, or sentences like "The new platform needs...".',
-      'Never explain WHY something is needed — only WHAT and HOW.',
-      'Use imperative mood: "must", "do", "return" — never "should", "could", "might".',
-    ],
+    guidance: args.verbose === true ? fullGuidance : compactGuidance,
+    taskWritingRules: args.verbose === true ? fullRules : compactRules,
     sharedSkills,
     workspace: ws,
     activeTasks: ws ? getActiveTasks(ws.directoryName) : [],
   };
+}
+
+function getTokenUsage(ws) {
+  const result = spawnSync(
+    'python3',
+    ['-m', 'runners.generic.context_cache', 'usage', '--config-dir', ws.wsDir],
+    { cwd: ROOT, encoding: 'utf8', timeout: 30000, maxBuffer: 1024 * 1024 },
+  );
+  if (result.status !== 0) {
+    const reason = result.error ? result.error.message : (result.stderr || result.stdout || '').trim();
+    throw new Error(`Token usage query failed: ${reason || `exit ${result.status}`}`);
+  }
+  return { workspace: ws.directoryName, estimated: true, ...JSON.parse(result.stdout) };
 }
 
 // --- Generic parallel runner ---
@@ -399,7 +439,7 @@ function launchGenericParallel({ ws, args }) {
   };
   const pyArgs = buildRunnerArgs(ws, normalizedArgs);
 
-  const logsDir = path.join(ROOT, 'workspaces', ws.directoryName, 'runs', runId);
+  const logsDir = path.join(ws.historyRoot, runId);
   fs.mkdirSync(logsDir, { recursive: true });
   const orchestratorLog = path.join(logsDir, 'orchestrator.log');
   const logStream = fs.createWriteStream(orchestratorLog, { flags: 'w' });
@@ -407,21 +447,30 @@ function launchGenericParallel({ ws, args }) {
   const { spawn } = require('node:child_process');
   const child = spawn('python3', pyArgs, { cwd: ROOT, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
 
-  const agentName = args.agent || ws.defaultAgent || 'default';
-  const state = { runId, workspace: ws.directoryName, agent: agentName, pid: child.pid, status: 'running', startedAt: new Date().toISOString(), finishedAt: null, exitCode: null, lastLines: [], logsDir };
+  const agentName = args.agent || 'per-task';
+  const stateFile = path.join(logsDir, 'run-state.json');
+  const state = { runId, workspace: ws.directoryName, agent: agentName, pid: child.pid, status: 'running', startedAt: new Date().toISOString(), finishedAt: null, exitCode: null, lastLines: [], logsDir, stateFile };
   parallelRuns.set(runId, state);
+  persistParallelRun(state);
 
   child.stdout.on('data', (chunk) => {
     logStream.write(chunk);
     const lines = chunk.toString().split('\n').filter(Boolean);
-    state.lastLines = lines.slice(-10);
+    state.lastLines = [...state.lastLines, ...lines].slice(-10);
+    persistParallelRun(state, false);
   });
-  child.stderr.on('data', (chunk) => { logStream.write(chunk); });
+  child.stderr.on('data', (chunk) => {
+    logStream.write(chunk);
+    const lines = chunk.toString().split('\n').filter(Boolean);
+    state.lastLines = [...state.lastLines, ...lines].slice(-10);
+    persistParallelRun(state, false);
+  });
   child.on('close', (code) => {
     logStream.end();
     state.status = code === 0 ? 'success' : 'failed';
     state.exitCode = code;
     state.finishedAt = new Date().toISOString();
+    persistParallelRun(state);
   });
   child.on('error', (err) => {
     logStream.end();
@@ -429,9 +478,103 @@ function launchGenericParallel({ ws, args }) {
     state.exitCode = -1;
     state.error = err.message;
     state.finishedAt = new Date().toISOString();
+    persistParallelRun(state);
   });
 
   return { runId, workspace: ws.directoryName, agent: agentName, pid: child.pid, logsDir, message: `Runner started (agent: ${agentName}). Monitor with parallel_status(runId="${runId}").` };
+}
+
+function persistParallelRun(state, force = true) {
+  const now = Date.now();
+  if (!force && state._lastPersistedAt && now - state._lastPersistedAt < 1000) return;
+  state._lastPersistedAt = now;
+  const serializable = { ...state };
+  delete serializable.stateFile;
+  delete serializable._lastPersistedAt;
+  writeFileAtomic(state.stateFile, `${JSON.stringify(serializable, null, 2)}\n`);
+}
+
+function loadPersistedParallelRun(runId) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(ensureString(runId, 'runId'))) {
+    throw new Error('Field "runId" contains unsupported characters.');
+  }
+  for (const workspace of listWorkspaces()) {
+    const stateFile = path.join(workspace.historyRoot, runId, 'run-state.json');
+    if (!fs.existsSync(stateFile)) continue;
+    const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+    if (!state || typeof state !== 'object' || state.runId !== runId) {
+      throw new Error(`Persisted parallel-run state is invalid: ${stateFile}`);
+    }
+    state.workspace = workspace.directoryName;
+    state.logsDir = path.dirname(stateFile);
+    state.stateFile = stateFile;
+    if (state.status === 'running' && !isProcessAlive(state.pid)) {
+      state.status = 'interrupted';
+      state.finishedAt = state.finishedAt || new Date().toISOString();
+      persistParallelRun(state);
+    }
+    parallelRuns.set(runId, state);
+    return state;
+  }
+  return null;
+}
+
+function isProcessAlive(pid) {
+  if (!Number.isInteger(pid) || pid < 1) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === 'EPERM';
+  }
+}
+
+function getParallelTaskDetail(run, taskId) {
+  const wanted = ensureString(taskId, 'taskId');
+  if (!fs.existsSync(run.logsDir)) throw new Error(`Run logs were not found: ${run.logsDir}`);
+  for (const entry of fs.readdirSync(run.logsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const stageDir = path.join(run.logsDir, entry.name);
+    const summaryPath = path.join(stageDir, 'summary.json');
+    const metadataPath = path.join(stageDir, 'metadata.json');
+    const dataPath = fs.existsSync(summaryPath) ? summaryPath : metadataPath;
+    if (!fs.existsSync(dataPath)) continue;
+    const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    const taskIds = (data.tasks || []).map((task) => task.id);
+    if (!taskIds.includes(wanted)) continue;
+    const logPath = path.join(stageDir, 'agent.log');
+    return {
+      ...data,
+      stageDir,
+      tailLog: fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8').split('\n').slice(-20).join('\n') : '',
+    };
+  }
+  throw new Error(`Task "${wanted}" was not found in parallel run "${run.runId}".`);
+}
+
+function listPersistedParallelRuns() {
+  const results = new Map(parallelRuns);
+  for (const workspace of listWorkspaces()) {
+    const runsDir = workspace.historyRoot;
+    if (!fs.existsSync(runsDir)) continue;
+    for (const runEntry of fs.readdirSync(runsDir, { withFileTypes: true })) {
+      if (!runEntry.isDirectory() || results.has(runEntry.name)) continue;
+      try {
+        const state = loadPersistedParallelRun(runEntry.name);
+        if (state) results.set(state.runId, state);
+      } catch (error) {
+        results.set(`${workspace.directoryName}/${runEntry.name}`, {
+          runId: runEntry.name,
+          workspace: workspace.directoryName,
+          status: 'invalid',
+          error: error.message,
+          startedAt: null,
+          finishedAt: null,
+        });
+      }
+    }
+  }
+  return [...results.values()];
 }
 
 // --- Tool call dispatch ---
@@ -451,10 +594,16 @@ function callTool(name, args = {}) {
     case 'get_task': {
       const ws = getWorkspace(resolveWsArg(args));
       const task = resolveTask(ws, args.task);
-      const context = loadTaskContext(task);
+      const contextBudgetTokens = args.contextBudgetTokens === undefined
+        ? ws.tokenPolicy.contextBudgetTokens
+        : ensurePositiveInteger(args.contextBudgetTokens, 'contextBudgetTokens', 32000);
+      const context = loadTaskContext(task, { workspace: ws, maxTokens: contextBudgetTokens });
       rememberActiveTasks(ws.directoryName, [task.id], 'loaded-by-mcp');
-      return { workspace: ws.directoryName, task, ...(context.hasContext ? { executionContext: context.content } : {}) };
+      return { workspace: ws.directoryName, task, ...(context.hasContext ? { executionContext: context.content, contextManifest: context.manifest, ...(context.cacheError ? { contextCacheWarning: context.cacheError } : {}) } : {}) };
     }
+    case 'get_task_diff': return getTaskDiff(args, getWorkspace);
+    case 'get_token_usage': return getTokenUsage(getWorkspace(resolveWsArg(args)));
+    case 'compact_task_context': return compactTaskContext(args, getWorkspace);
     case 'get_active_tasks': {
       const ws = getWorkspace(resolveWsArg(args));
       return { workspace: ws.directoryName, activeTasks: getActiveTasks(ws.directoryName) };
@@ -474,13 +623,16 @@ function callTool(name, args = {}) {
     case 'run_with_runner': return runWithRunner(args, getWorkspace);
     case 'run_parallel': {
       if (args.userConfirmedRunner !== true) throw new Error('Parallel execution requires userConfirmedRunner: true.');
+      if (args.concurrency !== undefined) args.concurrency = ensurePositiveInteger(args.concurrency, 'concurrency', MAX_CONCURRENCY);
       const ws = getWorkspace(resolveWsArg(args));
       return launchGenericParallel({ ws, args });
     }
     case 'parallel_status': {
-      const run = parallelRuns.get(args.runId);
-      if (!run) throw new Error(`Parallel run "${args.runId}" was not found in this MCP process.`);
+      const run = parallelRuns.get(args.runId) || loadPersistedParallelRun(args.runId);
+      if (!run) throw new Error(`Parallel run "${args.runId}" was not found in memory or persisted workspace history.`);
+      if (args.taskId) return getParallelTaskDetail(run, args.taskId);
       const result = { ...run };
+      delete result.stateFile;
       const logPath = path.join(run.logsDir, 'orchestrator.log');
       if (fs.existsSync(logPath)) {
         const content = fs.readFileSync(logPath, 'utf8');
@@ -489,7 +641,16 @@ function callTool(name, args = {}) {
       return result;
     }
     case 'list_parallel_runs': {
-      return [...parallelRuns.values()].map((r) => ({ runId: r.runId, workspace: r.workspace, agent: r.agent, status: r.status, pid: r.pid, startedAt: r.startedAt }));
+      return listPersistedParallelRuns().map((r) => ({
+        runId: r.runId,
+        workspace: r.workspace,
+        agent: r.agent,
+        status: r.status,
+        pid: r.pid,
+        startedAt: r.startedAt,
+        finishedAt: r.finishedAt,
+        ...(r.error ? { error: r.error } : {}),
+      }));
     }
     case 'get_my_activity': {
       const ws = getWorkspace(resolveWsArg(args));

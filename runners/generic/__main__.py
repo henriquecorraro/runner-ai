@@ -4,12 +4,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
+import re
 import sys
 
 from .config import ACTIONABLE_STATUSES, load_workspace, load_tasks
 from .models import AgentConfig
 from .monitor import Monitor
 from .runner import execute
+from .routing import resolve_task_agent, validate_pinned_model
 
 
 def parse_args():
@@ -21,8 +23,11 @@ def parse_args():
     p.add_argument("--open-tasks", action="store_true", help="Run all open/needs-rework tasks")
     p.add_argument("--open-scopes", action="store_true", help="Run all open/needs-rework tasks with dependency-aware parallelism")
     p.add_argument("--agent", help="Agent name override (must exist in workspace agents config)")
+    p.add_argument("--allow-agent-override", action="store_true", help="Allow --agent to replace a task pinned to another agent")
     p.add_argument("--concurrency", type=int, default=os.cpu_count() or 4, help="Max parallel workers (default: cpu count)")
     p.add_argument("--run-id", help="Custom run ID (default: timestamp)")
+    p.add_argument("--batch-related", action="store_true", help="Batch ready tasks with identical repository sets into one agent session")
+    p.add_argument("--batch-size", type=int, help="Maximum tasks per related-task batch (1-12)")
     p.add_argument("--dry-run", action="store_true", help="Resolve config and tasks without running")
     p.add_argument("--no-tui", action="store_true", help="Disable live TUI, print plain logs")
     return p.parse_args()
@@ -105,20 +110,40 @@ def validate_dependencies(tasks, all_tasks):
 
 def main():
     args = parse_args()
+    max_concurrency = os.cpu_count() or 4
+    if args.concurrency < 1 or args.concurrency > max_concurrency:
+        sys.exit(f"--concurrency must be between 1 and {max_concurrency}.")
+    if args.run_id and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", args.run_id):
+        sys.exit("--run-id may contain only letters, numbers, dots, underscores, and hyphens.")
     eco = load_workspace(args.config)
+    if args.batch_size is not None and not 1 <= args.batch_size <= 12:
+        sys.exit("--batch-size must be between 1 and 12.")
+    if args.allow_agent_override and not args.agent:
+        sys.exit("--allow-agent-override requires --agent.")
+    if args.batch_related:
+        eco.token_policy.batch_related_tasks = True
+    if args.batch_size is not None:
+        eco.token_policy.batch_size = args.batch_size
     all_tasks = load_tasks(eco)
     tasks = resolve_tasks(args, eco, all_tasks)
     satisfied_dependencies = validate_dependencies(tasks, all_tasks)
 
-    # Resolve agent
-    agent = eco.resolve_agent(args.agent)
+    # Resolve only an explicit CLI override. Without --agent, each task routes itself.
+    try:
+        agent = eco.resolve_agent(args.agent) if args.agent else None
+        decisions = [resolve_task_agent(eco, task, agent, args.allow_agent_override) for task in tasks]
+        for task, decision in zip(tasks, decisions):
+            if decision.source != "forced-cli":
+                validate_pinned_model(task, decision.agent)
+    except ValueError as error:
+        sys.exit(str(error))
 
     print(f"[runner] Workspace: {eco.name}")
-    print(f"[runner] Agent: {agent.name} ({agent.command} {' '.join(agent.args)})")
+    print(f"[runner] Agent routing: {'CLI override ' + agent.name if agent else 'per task'}")
     print(f"[runner] Tasks: {len(tasks)} | Concurrency: {args.concurrency}")
-    for t in tasks:
+    for t, decision in zip(tasks, decisions):
         deps = f" (depends: {', '.join(t.depends_on)})" if t.depends_on else ""
-        print(f"  • {t.id}{deps}")
+        print(f"  • {t.id} -> {decision.agent.name} [{decision.policy}/{decision.source}]{deps}")
 
     if args.dry_run:
         print("[runner] Dry run — not executing.")
@@ -134,6 +159,7 @@ def main():
             tasks=tasks,
             concurrency=args.concurrency,
             agent=agent,
+            allow_agent_override=args.allow_agent_override,
             run_id=args.run_id,
             satisfied_dependency_ids=satisfied_dependencies,
             on_update=monitor.update if not args.no_tui else None,
@@ -145,7 +171,7 @@ def main():
     monitor.print_summary(run)
 
     # Exit with failure if any task failed
-    if any(t.status.value in {"failed", "skipped"} for t in run.tasks.values()):
+    if any(t.status.value in {"failed", "blocked", "skipped", "queued", "running"} for t in run.tasks.values()):
         sys.exit(1)
 
 

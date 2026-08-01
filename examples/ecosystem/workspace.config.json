@@ -10,13 +10,39 @@
     "codex": {
       "type": "codex",
       "command": "codex",
-      "args": ["exec", "--ephemeral"]
+      "codex": {
+        "sessionPolicy": "task",
+        "resumeOnNeedsRework": true,
+        "sandbox": "workspace-write",
+        "approvalPolicy": "never",
+        "models": {
+          "mechanical": "gpt-5.6-luna",
+          "standard": "gpt-5.6-terra",
+          "deep": "gpt-5.6-sol"
+        },
+        "reasoning": {
+          "mechanical": "low",
+          "standard": "medium",
+          "deep": "high"
+        }
+      }
     },
     "claude-code": {
       "type": "claude-code",
       "command": "claude",
-      "args": ["-p"]
+      "args": ["-p"],
+      "model": "configured-claude-model",
+      "allowedModels": [
+        "configured-claude-model",
+        "lower-cost-claude-model"
+      ]
     }
+  },
+  "tokenPolicy": {
+    "contextBudgetTokens": 4000,
+    "reviewDiffBudgetTokens": 2000,
+    "batchRelatedTasks": false,
+    "batchSize": 3
   },
   "repositories": [
     {

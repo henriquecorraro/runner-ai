@@ -320,6 +320,94 @@ The `tasks/` folder stores snapshots of the central task files used for that bat
 
 To control token usage, the runner expects a short operational output on every execution and treats repo documentation as a later consolidation step.
 
+Token controls are configured per workspace:
+
+```json
+{
+  "tokenPolicy": {
+    "contextBudgetTokens": 4000,
+    "reviewDiffBudgetTokens": 2000,
+    "batchRelatedTasks": false,
+    "batchSize": 3
+  },
+  "agents": {
+    "codex": {
+      "type": "codex",
+      "command": "codex",
+      "codex": {
+        "sessionPolicy": "task",
+        "resumeOnNeedsRework": true,
+        "sandbox": "workspace-write",
+        "approvalPolicy": "never",
+        "models": {
+          "mechanical": "gpt-5.6-luna",
+          "standard": "gpt-5.6-terra",
+          "deep": "gpt-5.6-sol"
+        },
+        "reasoning": {
+          "mechanical": "low",
+          "standard": "medium",
+          "deep": "high"
+        }
+      }
+    }
+  }
+}
+```
+
+`get_task` assembles only relevant FTS5 context units up to the configured budget.
+`finish_task_execution` returns capped previews; use `get_task_diff` with `offset`
+and `maxTokens` for additional pages. `compact_task_context` replaces the sibling
+snapshot with a small manifest while retaining the content-addressed source under
+`sdd/context-sources/`.
+
+The cache lives at `cache/context.sqlite` inside the workspace. Invalidation uses
+the snapshot hash, analyzer version, and linked repository HEADs. Run telemetry is
+available in `summary.json` and through `get_token_usage`. Generic CLIs report
+estimates; the Codex adapter records measured input, cached input, output, and
+reasoning-output tokens from `codex exec --json`.
+
+Codex routing is task-first. Add any of these optional task frontmatter fields:
+
+```yaml
+complexity: low | medium | high
+risk: low | medium | critical
+execution_profile: mechanical | standard | deep
+execution_agent: workspace-agent-id
+routing_policy: pinned | preferred | portable
+preferred_model: model-id
+reasoning_effort: low | medium | high | xhigh
+```
+
+Explicit model/reasoning values win. Otherwise `execution_profile` wins, then
+`risk`/`complexity`; prompt-size `modelRoutes` is used only when routing metadata
+is absent. Related Codex tasks batch only when their cost tier and explicit
+overrides match.
+
+With `sessionPolicy: task`, Codex persists a thread id. A later `needs-rework`
+attempt resumes it only when the task specification, model, and reasoning effort
+are unchanged. Set `sessionPolicy: ephemeral` to disable persisted sessions.
+
+`execution_agent` is an identifier from `workspace.agents`, never a shell
+command. The runner resolves commands only from `workspace.config.json`.
+Configure exact models through `allowedModels`, `model`, `modelRoutes`, or the
+Codex profile map.
+
+- `pinned` fails when its agent/model is unavailable
+- `preferred` falls back to the workspace default or configured model route
+- `portable` rejects agent/model/reasoning pins and uses portable task metadata
+
+An explicit `--agent` may override preferred or portable routing. Replacing a
+different pinned agent also requires `--allow-agent-override`; run metadata
+records that decision as `forced-cli`.
+
+For compatible tasks, opt in to one shared agent session:
+
+```bash
+python3 -m runners.generic --config workspaces/<name>/workspace.config.json \
+  --open-tasks --batch-related --batch-size 3
+```
+
 Recommended flow:
 
 - `open`: task is ready to execute
@@ -334,13 +422,13 @@ Use repo doc updates conservatively:
 
 ## Operating Mode Skill
 
-Use [skills/workspace-operating-mode/SKILL.md](../skills/workspace-operating-mode/SKILL.md) when an agent is working in this runner and needs to choose the right workflow or workspace-local skills before acting.
+Use [skills/ecosystem-operating-mode/SKILL.md](../skills/ecosystem-operating-mode/SKILL.md) when an agent is working in this runner and needs to choose the right workflow or workspace-local skills before acting.
 
 The runner also includes this operating instruction in generated agent prompts so isolated executions load the umbrella guidance before the task-specific workflow.
 
 ## Bootstrap Skill
 
-Use [skills/workspace-bootstrap/SKILL.md](../skills/workspace-bootstrap/SKILL.md) when you want to create a new workspace environment from one or more local repositories without generating tasks yet.
+Use [skills/ecosystem-bootstrap/SKILL.md](../skills/ecosystem-bootstrap/SKILL.md) when you want to create a new workspace environment from one or more local repositories without generating tasks yet.
 
 During bootstrap, the skill may also assess the repositories' human-facing documentation against [docs/human-doc-quality-rubric.md](human-doc-quality-rubric.md) and register a baseline in the workspace `sdd/README.md`.
 
@@ -350,16 +438,16 @@ When that follow-up task runs, generated human docs should be written in the aff
 
 ## Task Factory Skill
 
-Use [skills/workspace-task-factory/SKILL.md](../skills/workspace-task-factory/SKILL.md) when you want to create or split centralized workspace tasks.
+Use [skills/ecosystem-task-factory/SKILL.md](../skills/ecosystem-task-factory/SKILL.md) when you want to create or split centralized workspace tasks.
 
 ## Task Executor Skill
 
-Use [skills/workspace-task-executor/SKILL.md](../skills/workspace-task-executor/SKILL.md) when you want to execute centralized workspace tasks.
+Use [skills/ecosystem-task-executor/SKILL.md](../skills/ecosystem-task-executor/SKILL.md) when you want to execute centralized workspace tasks.
 
 The executor requires an explicit workspace and execution mode. It can run work in the current chat session, or it can ask the AI in the current chat to run the runner. Runner execution creates history, but costs more tokens because it starts another agent session with a generated prompt and logs.
 
 ## Task Closer Skill
 
-Use [skills/workspace-task-closer/SKILL.md](../skills/workspace-task-closer/SKILL.md) after the user confirms a task is correct and ready to close.
+Use [skills/ecosystem-task-closer/SKILL.md](../skills/ecosystem-task-closer/SKILL.md) after the user confirms a task is correct and ready to close.
 
 The closer updates final human docs in the owning repository, changes the task frontmatter to `status: done`, and updates the workspace `sdd/README.md` Task Status.

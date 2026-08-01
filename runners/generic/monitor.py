@@ -16,6 +16,7 @@ STATUS_STYLE = {
     TaskStatus.RUNNING: "bold cyan",
     TaskStatus.SUCCESS: "bold green",
     TaskStatus.FAILED: "bold red",
+    TaskStatus.BLOCKED: "bold yellow",
     TaskStatus.SKIPPED: "yellow",
 }
 
@@ -24,15 +25,17 @@ STATUS_ICON = {
     TaskStatus.RUNNING: "🔄",
     TaskStatus.SUCCESS: "✅",
     TaskStatus.FAILED: "❌",
+    TaskStatus.BLOCKED: "🚧",
     TaskStatus.SKIPPED: "⏭️",
 }
 
 
 def build_table(run: Run) -> Table:
-    agent_name = run.agent.name if run.agent else "unknown"
+    agent_name = run.agent.name if run.agent else "mixed"
     table = Table(title=f"Workspace Runner ({agent_name}) — {run.workspace} — {run.id}", expand=True)
     table.add_column("Task", style="bold", ratio=3)
     table.add_column("Status", justify="center", ratio=1)
+    table.add_column("Agent", ratio=1)
     table.add_column("PID", justify="right", ratio=1)
     table.add_column("Duration", justify="right", ratio=1)
     table.add_column("Last Output", ratio=4, no_wrap=True)
@@ -54,6 +57,7 @@ def build_table(run: Run) -> Table:
         table.add_row(
             tid,
             Text(f"{icon} {tr.status.value}", style=style),
+            tr.agent.name if tr.agent else "",
             str(tr.pid or ""),
             duration,
             last,
@@ -101,5 +105,6 @@ class Monitor:
         self.console.print()
         success = sum(1 for t in run.tasks.values() if t.status == TaskStatus.SUCCESS)
         failed = sum(1 for t in run.tasks.values() if t.status == TaskStatus.FAILED)
+        blocked = sum(1 for t in run.tasks.values() if t.status == TaskStatus.BLOCKED)
         skipped = sum(1 for t in run.tasks.values() if t.status == TaskStatus.SKIPPED)
-        self.console.print(f"[bold]Done![/bold] ✅ {success} succeeded, ❌ {failed} failed, ⏭️  {skipped} skipped")
+        self.console.print(f"[bold]Done![/bold] ✅ {success} succeeded, ❌ {failed} failed, 🚧 {blocked} blocked, ⏭️  {skipped} skipped")

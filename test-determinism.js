@@ -10,12 +10,28 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 
 const { writeFileAtomic, validateFrontmatter, parseTaskFile, buildTaskMarkdown, KNOWN_FRONTMATTER_FIELDS } = require('./lib/frontmatter');
-const { slugify } = require('./lib/utils');
+const { slugify, resolveContainedPath } = require('./lib/utils');
 const { buildRunnerArgs } = require('./lib/runner');
+const { estimateTokens, truncateToTokenBudget } = require('./lib/token-usage');
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eco-test-'));
+const workspacesModule = require('./lib/workspaces');
+workspacesModule.ROOT = tmpDir;
+const { createWorkspace } = require('./lib/workspace-create');
+const { reconcile } = require('./lib/reconcile');
+const {
+  createTask,
+  createBranchInRepos,
+  finishTaskExecution,
+  startTaskExecution,
+  validateTransition,
+  getTaskDiff,
+  compactTaskContext,
+  loadTaskContext,
+} = require('./lib/tasks');
 let passed = 0;
 let failed = 0;
 
@@ -141,6 +157,13 @@ test('parseTaskFile roundtrips all fields correctly', () => {
     title: 'Roundtrip Test',
     scope: 'test-scope',
     status: 'open',
+    complexity: 'high',
+    risk: 'critical',
+    executionProfile: 'deep',
+    executionAgent: 'codex',
+    routingPolicy: 'pinned',
+    preferredModel: 'gpt-5.6-sol',
+    reasoningEffort: 'high',
     repositories: ['repo-a', 'repo-b'],
     validation: ['npm test', 'npm run lint'],
     docsTargets: ['docs/api.md'],
@@ -168,6 +191,13 @@ test('parseTaskFile roundtrips all fields correctly', () => {
   assert.equal(parsed.title, 'Roundtrip Test');
   assert.equal(parsed.scope, 'test-scope');
   assert.equal(parsed.status, 'open');
+  assert.equal(parsed.complexity, 'high');
+  assert.equal(parsed.risk, 'critical');
+  assert.equal(parsed.executionProfile, 'deep');
+  assert.equal(parsed.executionAgent, 'codex');
+  assert.equal(parsed.routingPolicy, 'pinned');
+  assert.equal(parsed.preferredModel, 'gpt-5.6-sol');
+  assert.equal(parsed.reasoningEffort, 'high');
   assert.deepEqual(parsed.repositories, ['repo-a', 'repo-b']);
   assert.deepEqual(parsed.validation, ['npm test', 'npm run lint']);
   assert.deepEqual(parsed.docsTargets, ['docs/api.md']);
@@ -193,21 +223,16 @@ test('O_EXCL prevents creating file that already exists', () => {
 });
 
 // ============================================================
-console.log('\n#5 - State machine (via direct import)');
+console.log('\n#5 - State machine (real implementation)');
 // ============================================================
 
-// Import the ALLOWED_TRANSITIONS indirectly by testing task status changes
-// We'll simulate the validateTransition logic
-const ALLOWED_TRANSITIONS = {
-  open: new Set(['implemented', 'needs-rework']),
-  'needs-rework': new Set(['implemented', 'open']),
-  implemented: new Set(['done', 'needs-rework']),
-  done: new Set([]),
-};
-
 function testTransition(from, to) {
-  const allowed = ALLOWED_TRANSITIONS[from];
-  return allowed && allowed.has(to);
+  try {
+    validateTransition({ id: 'transition-test', status: from }, to);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 test('open → implemented is allowed', () => {
@@ -381,6 +406,14 @@ test('context file is not created when context arg is empty', () => {
   assert.equal(fs.existsSync(contextPath), false);
 });
 
+test('token estimator and truncation are deterministic', () => {
+  assert.equal(estimateTokens('12345678'), 2);
+  const result = truncateToTokenBudget('x'.repeat(100), 10);
+  assert.equal(result.truncated, true);
+  assert.equal(result.content.length, 40);
+  assert.equal(result.includedTokens, 10);
+});
+
 // ============================================================
 console.log('\nAgent auto-detection');
 // ============================================================
@@ -484,6 +517,21 @@ test('runner forwards agent override and concurrency', () => {
   assert.deepEqual(args.slice(-4), ['--agent', 'custom', '--concurrency', '3']);
 });
 
+test('runner requires explicit permission flag for pinned agent overrides', () => {
+  const ws = { configPath: '/tmp/workspace.config.json' };
+  assert.throws(() => buildRunnerArgs(ws, { selection: 'open-tasks', allowAgentOverride: true }), /requires/);
+  const args = buildRunnerArgs(ws, { selection: 'open-tasks', agent: 'codex', allowAgentOverride: true });
+  assert(args.includes('--allow-agent-override'));
+});
+
+test('runner forwards opt-in related-task batching', () => {
+  const args = buildRunnerArgs(
+    { configPath: '/tmp/workspace.config.json' },
+    { selection: 'open-tasks', batchRelatedTasks: true, batchSize: 4 },
+  );
+  assert.deepEqual(args.slice(-3), ['--batch-related', '--batch-size', '4']);
+});
+
 test('runner rejects calls without a selection', () => {
   assert.throws(
     () => buildRunnerArgs({ configPath: '/tmp/workspace.config.json' }),
@@ -517,6 +565,223 @@ test('intent field does not appear in buildTaskMarkdown output', () => {
   assert.equal(/^intent:/m.test(md), false);
   // intent value must not leak into the file
   assert.equal(md.includes('We decided this'), false);
+});
+
+// ============================================================
+console.log('\nDeterministic task creation and Git lifecycle');
+// ============================================================
+
+function makeWorkspace(name, repositories = [{ id: 'repo', root: tmpDir }]) {
+  const wsDir = path.join(tmpDir, 'workspaces', name);
+  const sddRoot = path.join(wsDir, 'sdd');
+  const tasksDir = path.join(sddRoot, 'tasks');
+  fs.mkdirSync(tasksDir, { recursive: true });
+  writeFileAtomic(path.join(sddRoot, 'README.md'), `# ${name}\n\n## Task Status\n\n- No tasks yet\n`);
+  return {
+    directoryName: name, name, wsDir, sddRoot, tasksDir, repositories, githubProject: null,
+    defaultAgent: 'codex',
+    agents: { codex: { name: 'codex', configuredModels: ['gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6-sol'] } },
+    configPath: path.join(wsDir, 'workspace.config.json'),
+    tokenPolicy: { contextBudgetTokens: 4000, reviewDiffBudgetTokens: 2000, batchRelatedTasks: false, batchSize: 3 },
+  };
+}
+
+function runGit(repositoryRoot, args) {
+  return spawnSync('git', args, { cwd: repositoryRoot, encoding: 'utf8' });
+}
+
+function initGitRepository(name, branch = 'main') {
+  const repositoryRoot = path.join(tmpDir, name);
+  fs.mkdirSync(repositoryRoot, { recursive: true });
+  assert.equal(runGit(repositoryRoot, ['init', '-q', '-b', branch]).status, 0);
+  runGit(repositoryRoot, ['config', 'user.email', 'audit@example.com']);
+  runGit(repositoryRoot, ['config', 'user.name', 'Audit']);
+  writeFileAtomic(path.join(repositoryRoot, 'file.txt'), 'initial\n');
+  runGit(repositoryRoot, ['add', '.']);
+  assert.equal(runGit(repositoryRoot, ['commit', '-q', '-m', 'initial']).status, 0);
+  return repositoryRoot;
+}
+
+test('createTask rejects duplicate task ids regardless of sequence number', () => {
+  const ws = makeWorkspace('duplicate-id');
+  const args = { workspace: ws.directoryName, id: 'same-id', title: 'Same ID', repositories: ['repo'], body: 'Do work' };
+  createTask(args, () => ws);
+  assert.equal(parseTaskFile(path.join(ws.tasksDir, '01-same-id.md')).routingPolicy, 'preferred');
+  assert.throws(() => createTask(args, () => ws), /already exists/);
+  assert.deepEqual(fs.readdirSync(ws.tasksDir).filter((file) => file.endsWith('.md')), ['01-same-id.md']);
+});
+
+test('createTask leaves no task file when GitHub synchronization fails', () => {
+  const ws = makeWorkspace('sync-failure');
+  const syncError = () => { throw new Error('simulated sync failure'); };
+  assert.throws(
+    () => createTask(
+      { workspace: ws.directoryName, id: 'failed-sync', title: 'Failed Sync', repositories: ['repo'], body: 'Do work' },
+      () => ws,
+      { createTaskCard: syncError },
+    ),
+    /simulated sync failure/,
+  );
+  assert.deepEqual(fs.readdirSync(ws.tasksDir).filter((file) => file.endsWith('.md')), []);
+  assert.equal(fs.existsSync(path.join(ws.tasksDir, '.create-task.lock')), false);
+});
+
+test('createTask validates deterministic execution routing', () => {
+  const ws = makeWorkspace('task-routing');
+  const base = { workspace: ws.directoryName, title: 'Route Task', repositories: ['repo'], body: 'Do work' };
+  assert.throws(() => createTask({ ...base, id: 'missing-agent', routingPolicy: 'pinned' }, () => ws), /executionAgent/);
+  assert.throws(() => createTask({ ...base, id: 'raw-command', executionAgent: 'codex --danger', routingPolicy: 'pinned' }, () => ws), /not configured/);
+  assert.throws(() => createTask({ ...base, id: 'bad-model', executionAgent: 'codex', preferredModel: 'hallucinated-model' }, () => ws), /not configured/);
+  assert.throws(() => createTask({ ...base, id: 'bad-portable', routingPolicy: 'portable', executionAgent: 'codex' }, () => ws), /Portable routing/);
+  const created = createTask({
+    ...base, id: 'valid-route', executionAgent: 'codex', routingPolicy: 'pinned',
+    executionProfile: 'deep', preferredModel: 'gpt-5.6-sol', reasoningEffort: 'high',
+  }, () => ws);
+  assert.equal(created.task.executionAgent, 'codex');
+  assert.equal(created.task.routingPolicy, 'pinned');
+  assert.equal(created.task.preferredModel, 'gpt-5.6-sol');
+});
+
+test('branch preflight never deletes a preexisting branch after another repository fails', () => {
+  const first = initGitRepository('rollback-first');
+  const second = initGitRepository('rollback-second', 'other');
+  assert.equal(runGit(first, ['branch', 'feat/audit']).status, 0);
+  const ws = { repositories: [{ id: 'one', root: first }, { id: 'two', root: second }] };
+  assert.throws(() => createBranchInRepos(ws, ['one', 'two'], 'feat/audit', 'main'), /does not exist/);
+  assert.equal(runGit(first, ['show-ref', '--verify', '--quiet', 'refs/heads/feat/audit']).status, 0);
+  assert.equal(runGit(first, ['branch', '--show-current']).stdout.trim(), 'main');
+});
+
+test('current-chat lifecycle finishes without a GitHub Project', () => {
+  const repositoryRoot = initGitRepository('no-project-repo');
+  const ws = makeWorkspace('no-project', [{ id: 'repo', root: repositoryRoot }]);
+  writeFileAtomic(path.join(ws.tasksDir, '01-audit.md'), buildTaskMarkdown({
+    id: 'audit', title: 'Audit', scope: 'audit', status: 'open', repositories: ['repo'],
+    validation: [], docsTargets: [], dependsOn: [], body: 'Do work', createdAt: new Date().toISOString(),
+  }));
+  const started = startTaskExecution({ workspace: ws.directoryName, task: 'audit' }, () => ws);
+  assert.equal(started.task.executionState, 'in-progress');
+  const review = finishTaskExecution({ workspace: ws.directoryName, task: 'audit' }, () => ws);
+  assert.equal(review.movedToTesting, false);
+  const finished = finishTaskExecution({ workspace: ws.directoryName, task: 'audit', skipReview: true }, () => ws);
+  assert.equal(finished.task.status, 'implemented');
+  assert.equal(finished.task.executionState, 'testing');
+});
+
+test('task diff is paginated by token budget', () => {
+  const repositoryRoot = initGitRepository('paged-diff');
+  writeFileAtomic(path.join(repositoryRoot, 'file.txt'), `${'changed line\n'.repeat(600)}`);
+  const ws = makeWorkspace('paged-diff-workspace', [{ id: 'repo', root: repositoryRoot }]);
+  writeFileAtomic(path.join(ws.tasksDir, '01-paged.md'), buildTaskMarkdown({
+    id: 'paged', title: 'Paged', scope: 'paged', status: 'open', repositories: ['repo'],
+    validation: [], docsTargets: [], dependsOn: [], baseBranch: 'main', body: 'Review changes', createdAt: new Date().toISOString(),
+  }));
+  const first = getTaskDiff({ workspace: ws.directoryName, task: 'paged', maxTokens: 100 }, () => ws);
+  assert.equal(first.truncated, true);
+  assert.ok(first.nextOffset > 0);
+  assert.ok(first.includedTokens <= 100);
+  const second = getTaskDiff({ workspace: ws.directoryName, task: 'paged', maxTokens: 100, offset: first.nextOffset }, () => ws);
+  assert.equal(second.offset, first.nextOffset);
+  assert.equal(second.contentHash, first.contentHash);
+});
+
+test('thin context manifest remains recoverable through SQLite cache', () => {
+  const repositoryRoot = initGitRepository('thin-context-repo');
+  const ws = makeWorkspace('thin-context-workspace', [{ id: 'repo', root: repositoryRoot }]);
+  writeFileAtomic(ws.configPath, `${JSON.stringify({
+    name: ws.name,
+    repositories: [{ id: 'repo', path: repositoryRoot }],
+    defaultAgent: 'fake',
+    agents: { fake: { command: '/bin/true' } },
+  }, null, 2)}\n`);
+  const taskPath = path.join(ws.tasksDir, '01-thin.md');
+  writeFileAtomic(taskPath, buildTaskMarkdown({
+    id: 'thin', title: 'Thin', scope: 'thin', status: 'open', repositories: ['repo'],
+    validation: [], docsTargets: [], dependsOn: [], body: 'Use cached knowledge', createdAt: new Date().toISOString(),
+  }));
+  writeFileAtomic(taskPath.replace(/\.md$/, '.context.md'), '# API Contract\n\nImportant cached knowledge.\n');
+  const result = compactTaskContext({ workspace: ws.directoryName, task: 'thin' }, () => ws);
+  assert.equal(result.unchanged, false);
+  assert.match(fs.readFileSync(taskPath.replace(/\.md$/, '.context.md'), 'utf8'), /ws-runner-context-manifest:v1/);
+  const loaded = loadTaskContext(parseTaskFile(taskPath), { workspace: ws, maxTokens: 100 });
+  assert.match(loaded.content, /Important cached knowledge/);
+  assert.ok(loaded.manifest.unitIds.length > 0);
+  assert.equal(fs.existsSync(path.join(ws.wsDir, 'cache', 'context.sqlite')), true);
+});
+
+test('runner rejects invalid concurrency and escaping run ids', () => {
+  const ws = { configPath: '/tmp/workspace.config.json' };
+  assert.throws(() => buildRunnerArgs(ws, { selection: 'open-tasks', concurrency: -1 }), /positive integer/);
+  assert.throws(() => buildRunnerArgs(ws, { selection: 'open-tasks', runId: '../escape' }), /unsupported|letters/);
+});
+
+test('contained paths reject workspace traversal', () => {
+  assert.throws(() => resolveContainedPath('/tmp/workspace', '../escape', 'historyRoot'), /stay inside/);
+  assert.equal(resolveContainedPath('/tmp/workspace', 'runs', 'historyRoot'), '/tmp/workspace/runs');
+});
+
+test('createWorkspace rejects escaping roots and leaves no partial workspace', () => {
+  const repositoryRoot = initGitRepository('workspace-source');
+  assert.throws(() => createWorkspace({
+    name: 'Escaping Workspace',
+    directoryName: 'escaping-workspace',
+    repositories: [{ id: 'repo', path: repositoryRoot }],
+    historyRoot: '../outside',
+    skipGithubProject: true,
+  }), /stay inside/);
+  assert.equal(fs.existsSync(path.join(tmpDir, 'workspaces', 'escaping-workspace')), false);
+  assert.equal(fs.readdirSync(path.join(tmpDir, 'workspaces')).some((name) => name.startsWith('escaping-workspace.tmp.')), false);
+});
+
+test('createWorkspace publishes a complete staged workspace atomically', () => {
+  const repositoryRoot = initGitRepository('workspace-source-success');
+  const previousModel = process.env.CODEX_MODEL;
+  process.env.CODEX_MODEL = 'gpt-5.6-sol';
+  let created;
+  try {
+    created = createWorkspace({
+      name: 'Atomic Workspace',
+      directoryName: 'atomic-workspace',
+      repositories: [{ id: 'repo', path: repositoryRoot }],
+      skipGithubProject: true,
+    });
+  } finally {
+    if (previousModel === undefined) delete process.env.CODEX_MODEL;
+    else process.env.CODEX_MODEL = previousModel;
+  }
+  assert.equal(fs.existsSync(created.configPath), true);
+  assert.equal(fs.existsSync(path.join(created.tasksDir, '.gitkeep')), true);
+  assert.equal(fs.existsSync(path.join(created.sddRoot, 'README.md')), true);
+  const config = JSON.parse(fs.readFileSync(created.configPath, 'utf8'));
+  assert.equal(config.agents.codex.codex.sessionPolicy, 'task');
+  assert.equal(config.agents.codex.codex.models.standard, 'gpt-5.6-terra');
+  assert.equal(config.agents.codex.codex.reasoning.deep, 'high');
+  assert.equal(config.agents.codex.model, undefined);
+  assert.equal(fs.readdirSync(path.join(tmpDir, 'workspaces')).some((name) => name.startsWith('atomic-workspace.tmp.')), false);
+});
+
+test('createWorkspace persists agent model allowlists', () => {
+  const repositoryRoot = initGitRepository('workspace-routing-config-source');
+  const created = createWorkspace({
+    name: 'Routing Config Workspace',
+    directoryName: 'routing-config-workspace',
+    repositories: [{ id: 'repo', path: repositoryRoot }],
+    skipGithubProject: true,
+    defaultAgent: 'custom',
+    agents: {
+      custom: {
+        command: '/bin/true',
+        model: 'primary-model',
+        allowedModels: ['primary-model', 'secondary-model'],
+      },
+    },
+  });
+  const config = JSON.parse(fs.readFileSync(created.configPath, 'utf8'));
+  assert.deepEqual(config.agents.custom.allowedModels, ['primary-model', 'secondary-model']);
+});
+
+test('reconcile rejects unknown direction before touching GitHub', () => {
+  assert.throws(() => reconcile({ githubProject: {} }, { direction: 'unsafe' }), /direction/);
 });
 
 // ============================================================

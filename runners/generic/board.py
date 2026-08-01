@@ -15,18 +15,18 @@ BOARD_STATUS_MAP = {
 }
 
 
-def move_task_card(eco: WorkspaceConfig, task: TaskDef, status: str) -> None:
-    """Move a task's project card to the given status. Fails silently."""
-    if not eco.github_project or not task.github_project_item_id:
-        return
-    try:
-        target = BOARD_STATUS_MAP.get(status, status)
-        field_id, option_id = _resolve_status_option(eco.github_project, target)
-        if not field_id or not option_id:
-            return
-        _update_item_field(eco.github_project, task.github_project_item_id, field_id, option_id)
-    except Exception:
-        pass  # Non-critical
+def move_task_card(eco: WorkspaceConfig, task: TaskDef, status: str) -> bool:
+    """Move a task's project card and surface configured-board failures."""
+    if not eco.github_project:
+        return False
+    if not task.github_project_item_id:
+        raise RuntimeError(f"Task '{task.id}' has no github_project_item_id.")
+    target = BOARD_STATUS_MAP.get(status, status)
+    field_id, option_id = _resolve_status_option(eco.github_project, target)
+    if not field_id or not option_id:
+        raise RuntimeError(f"GitHub Project status option '{target}' was not found.")
+    _update_item_field(eco.github_project, task.github_project_item_id, field_id, option_id)
+    return True
 
 
 def _resolve_status_option(project: GitHubProject, status_name: str) -> tuple[Optional[str], Optional[str]]:
@@ -37,7 +37,7 @@ def _resolve_status_option(project: GitHubProject, status_name: str) -> tuple[Op
         capture_output=True, text=True, timeout=15,
     )
     if result.returncode != 0:
-        return None, None
+        raise RuntimeError(f"GitHub Project fields lookup failed: {result.stderr.strip()}")
 
     fields = json.loads(result.stdout)
     status_field = next((f for f in fields if f.get("name", "").lower() == "status"), None)
@@ -58,12 +58,14 @@ def _resolve_status_option(project: GitHubProject, status_name: str) -> tuple[Op
 def _update_item_field(project: GitHubProject, item_id: int, field_id: str, option_id: str) -> None:
     endpoint = _project_endpoint(project, f"items/{item_id}")
     body = json.dumps({"fields": [{"id": field_id, "value": option_id}]})
-    subprocess.run(
+    result = subprocess.run(
         ["gh", "api", endpoint, "--method", "PATCH",
          "--header", "Accept: application/vnd.github+json",
          "--input", "-"],
         input=body, capture_output=True, text=True, timeout=15,
     )
+    if result.returncode != 0:
+        raise RuntimeError(f"GitHub Project item update failed: {result.stderr.strip()}")
 
 
 def _project_endpoint(project: GitHubProject, suffix: str) -> str:
