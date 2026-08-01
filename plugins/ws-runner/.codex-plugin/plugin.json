@@ -1,6 +1,6 @@
 {
   "name": "ws-runner",
-  "version": "0.1.0+codex.20260801151103",
+  "version": "0.1.0+codex.20260801164325",
   "description": "Plan, track, and execute centralized workspace tasks through Codex chat with MCP-backed tools.",
   "author": {
     "name": "Workspace Runner",
