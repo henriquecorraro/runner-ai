@@ -93,7 +93,7 @@ Apply these extra gates:
 
 ## Bootstrap Output Contract
 
-When this rubric is used during `ecosystem-bootstrap`, the result should include:
+When this rubric is used during `workspace-bootstrap`, the result should include:
 
 - one scorecard per repository
 - the evidence files used

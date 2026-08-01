@@ -94,7 +94,7 @@ Status: {task.status}
 {f"Validation: {' ; '.join(task.validation)}" if task.validation else ""}
 
 {COMPACT_POLICY}
-Read only the applicable repository instructions and, when needed, {RUNNER_ROOT}/skills/ecosystem-task-executor/SKILL.md.
+Read only the applicable repository instructions and, when needed, {RUNNER_ROOT}/skills/workspace-task-executor/SKILL.md.
 
 {context_block}Execution goals:
 - Implement the specification completely.

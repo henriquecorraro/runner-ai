@@ -1,6 +1,6 @@
 ---
 name: workspace-task-factory
-description: "Create or split centralized workspace tasks under ws-runner/workspaces/<name>/sdd/tasks. Use when the user wants to turn repository analysis into executable workspace tasks, group related tasks by scope, assign repository ownership, and update the central Task Status without relying on task-factory.md files inside each workspace."
+description: "Create or split centralized workspace tasks under the selected ws-runner workspace SDD queue. Use when the user wants to turn repository analysis into executable workspace tasks, group related tasks by scope, assign repository ownership, and update the central Task Status without relying on task-factory.md files inside each workspace."
 ---
 
 # Workspace Task Factory

@@ -46,10 +46,17 @@ Most AI-agent workflows repeatedly pay for context that was already discovered: 
 
 ```text
 ws-runner/
+  .agents/plugins/       # Codex marketplace catalog (required at marketplace root)
+  .claude-plugin/        # Claude Code marketplace catalog (required at marketplace root)
   bin/
     ws-runner.js          # CLI runner
     ws-runner-mcp.js      # MCP server
   lib/                    # Core modules
+  plugins/
+    ws-runner/            # Canonical plugin package for Codex and Claude Code
+      .claude-plugin/     # Claude Code plugin manifest
+      .codex-plugin/      # Codex plugin manifest
+      skills/             # Skills shipped with the plugin
   runners/generic/        # Generic Python async runner
   skills/                 # Shared agent skills
   workspaces/
@@ -59,6 +66,11 @@ ws-runner/
       skills/
       runs/
 ```
+
+All installable plugin content is centralized under `plugins/ws-runner/`. The
+hidden directories at the repository root are marketplace catalogs, not plugin
+implementations. They remain at the marketplace root because Codex and Claude
+Code use those conventional locations to discover `plugins/ws-runner/`.
 
 ## Workflow
 
